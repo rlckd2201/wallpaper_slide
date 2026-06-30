@@ -10,13 +10,15 @@
 - Use `http://172.16.19.35:28080/safety-wallpaper/policy.json` as the default central control policy endpoint.
 - Store only agent bootstrap settings in `config.json`.
 - Store campaign period, slide timing, taskbar behavior, slide count, and image list in server `policy.json`.
-- Manage server `policy.json` and uploaded images through a Windows PowerShell WinForms administrator GUI.
+- Manage server `policy.json` and uploaded images through the web administrator page served by the same server.
+- Treat `/safety-wallpaper/admin` as the primary administrator UI for safety staff.
 - Use a campaign-wide schedule for the first version.
 - Keep `avoidTaskbar` enabled by default and render active slides into the primary screen working area before applying them.
 - `StartSafetyWallpaperSlideshow.bat` registers a current-user startup entry and launches the agent through hidden VBS.
 - Employee startup launches both the hidden wallpaper agent and a tray controller.
 - Tray `정책 새로고침` writes `.runtime/refresh.signal`; the agent detects it and syncs policy immediately.
 - Server static file service limits concurrent image downloads to 5; policy JSON requests are not throttled.
+- Uploaded image requests return the saved `images/...` URL so the web page can select the actual stored file.
 
 ## Pending
 - Whether production startup registration should use HKCU Run, HKLM Run, or Task Scheduler under NAC.

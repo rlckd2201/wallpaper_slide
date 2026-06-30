@@ -1,4 +1,4 @@
-# Safety Wallpaper Slideshow
+# 안전 배경화면 슬라이드쇼
 
 사내 안전 홍보 이미지를 Windows 바탕화면 배경으로 슬라이드 쇼처럼 순환 설정하는 실행형 배포 묶음입니다.
 
@@ -9,11 +9,11 @@
 - 실제 배경화면 변경 없이 1회 점검: `TestSafetyWallpaperSlideshow.bat`
 
 ## 관리자 변경 항목
-- 서버 정책: `http://172.16.19.35:28080/safety-wallpaper/policy.json`
-- Git repo: `https://github.com/rlckd2201/wallpaper_slide.git`
+- 관리자 페이지: `http://172.16.19.35:28080/safety-wallpaper/admin`
+- 서버 정책 파일: `http://172.16.19.35:28080/safety-wallpaper/policy.json`
+- Git 저장소: `https://github.com/rlckd2201/wallpaper_slide.git`
 - 사용자 PC 로컬 설정: `config.json`에서 정책 URL, 10분 동기화 간격, 캐시 폴더만 관리합니다.
-- 이미지와 캠페인 정책은 서버 관리자 GUI에서 관리합니다.
-- 서버 관리자 GUI: `server-policy-sample/StartSafetyWallpaperAdminGui.bat`
+- 이미지와 캠페인 정책은 관리자 웹페이지에서 관리합니다.
 - 서버에서 바로 띄울 때: `server-policy-sample/StartSafetyWallpaperServer.bat`
 - 서버 이미지 다운로드 동시 처리: 최대 5개, 초과 요청은 대기
 - 서버에서 git으로 받을 때: `server-policy-sample/InstallOrUpdateSafetyWallpaperServerFromGit.bat`

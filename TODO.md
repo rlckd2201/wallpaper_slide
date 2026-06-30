@@ -17,13 +17,13 @@
 - [x] Ensure slides restart from the first image after the final image in the list.
 - [x] Add simple server-side batch and PowerShell static server for `172.16.19.35:28080`.
 - [x] Add server-side git clone/pull install/update batches.
-- [x] Add server-side administrator GUI for image upload, selection, posting period, and slide policy management.
+- [x] Add server-side web administrator page for image upload, drag and drop, selection, posting period, and slide policy management.
 - [x] Limit server image download concurrency to 5 and queue additional image requests.
 - Add installer/update strategy and uninstall behavior.
 - Add tests or manual verification checklist for image change, date expiry, startup, and black background fallback.
 
 ## Open Questions
-- Confirm administrator GUI workflow on `172.16.19.35`.
+- Confirm administrator web page workflow on `172.16.19.35:28080/safety-wallpaper/admin` after pulling the latest server files.
 - Server can now clone `https://github.com/rlckd2201/wallpaper_slide.git`.
 - Should users be allowed to close/pause the slide show?
 - Which Windows versions must be supported?

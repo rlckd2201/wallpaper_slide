@@ -23,7 +23,9 @@
 - Runtime logs are written to `logs/wallpaper-slideshow.log`.
 - `graphify` is installed and available.
 - Server-side git install/update batches are available under `server-policy-sample`.
-- Server-side administrator GUI is available as `server-policy-sample/StartSafetyWallpaperAdminGui.bat`.
+- Server-side administrator web page is available at `http://172.16.19.35:28080/safety-wallpaper/admin`.
+- The web administrator page is the primary admin UI; the older WinForms admin script remains in the repo but is no longer the requested workflow.
+- Admin uploads return the saved image URL, and the web page automatically selects newly uploaded images.
 - Server static file service allows up to 5 concurrent image downloads and queues additional image requests.
 
 ### Next Session Start Checklist
@@ -39,6 +41,7 @@
 - It can be distributed as a folder and started by running the start `.bat`.
 - User PCs are now intended to operate as policy/image listener agents controlled by the central server.
 - Employee PCs have a tray icon for status, log opening, policy URL opening, and manual policy refresh.
-- Administrators manage uploads, selected images, posting period, and slide policy through the server GUI.
+- Administrators manage uploads, selected images, posting period, and slide policy through the web page.
+- Server `StartSafetyWallpaperServer.bat` prints both the admin page URL and policy URL.
 - The hidden background agent was restarted after the slide cycle update.
 - Local workspace was initialized as a git repository and pushed to `https://github.com/rlckd2201/wallpaper_slide.git` on branch `main`.

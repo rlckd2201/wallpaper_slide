@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>안전 배경화면 관리자</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --line: #d9e2ef;
+      --text: #1f2937;
+      --muted: #607086;
+      --blue: #2563eb;
+      --green: #16803c;
+      --red: #c2410c;
+      --shadow: 0 10px 26px rgba(15, 23, 42, .08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Malgun Gothic", "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: #102033;
+      color: #fff;
+      padding: 22px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    header .status {
+      font-size: 14px;
+      color: #dbeafe;
+    }
+
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      gap: 18px;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    section h2 {
+      margin: 0 0 16px;
+      font-size: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px 11px;
+      font-size: 15px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    .checks {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .checks label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+
+    .checks input {
+      width: 18px;
+      height: 18px;
+    }
+
+    .upload {
+      border: 2px dashed #9bb3d1;
+      background: #f8fbff;
+      border-radius: 8px;
+      min-height: 132px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 18px;
+      transition: .15s ease;
+    }
+
+    .upload.dragover {
+      border-color: var(--blue);
+      background: #eaf2ff;
+    }
+
+    .upload strong {
+      display: block;
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    .upload span {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 15px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #e2e8f0;
+      color: #102033;
+    }
+
+    button.primary {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    button.success {
+      background: var(--green);
+      color: #fff;
+      font-size: 16px;
+      padding: 12px 22px;
+    }
+
+    button.warn {
+      background: #fff7ed;
+      color: var(--red);
+      border: 1px solid #fed7aa;
+    }
+
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+      position: relative;
+    }
+
+    .card.selected {
+      outline: 3px solid var(--blue);
+    }
+
+    .thumb {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #0f172a;
+      object-fit: contain;
+      display: block;
+    }
+
+    .card-body {
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      word-break: break-all;
+      line-height: 1.35;
+      min-height: 38px;
+    }
+
+    .card-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .select-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+    }
+
+    .select-row input {
+      width: 18px;
+      height: 18px;
+    }
+
+    .footer {
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
+      background: rgba(244, 247, 251, .94);
+      border-top: 1px solid var(--line);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .footer-inner {
+      width: min(1280px, 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .message {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      header { align-items: flex-start; flex-direction: column; }
+      .grid { grid-template-columns: 1fr 1fr; }
+      .footer-inner { align-items: stretch; flex-direction: column; }
+    }
+
+    @media (max-width: 560px) {
+      main { padding: 14px; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>안전 배경화면 배포 관리자</h1>
+      <div class="status">이미지를 올리고, 게시기간을 정한 뒤, 적용할 그림을 선택해서 바로 반영합니다.</div>
+    </div>
+    <div class="status" id="policyUrl"></div>
+  </header>
+
+  <main>
+    <section>
+      <h2>1. 게시 정책</h2>
+      <div class="grid">
+        <label>게시 시작
+          <input id="campaignStart" type="datetime-local">
+        </label>
+        <label>게시 종료
+          <input id="campaignEnd" type="datetime-local">
+        </label>
+        <label>그림 전환 시간(초)
+          <input id="slideIntervalSeconds" type="number" min="5" value="30">
+        </label>
+        <label>임직원 확인 주기(초)
+          <input id="policyPollSeconds" type="number" min="60" value="600">
+        </label>
+        <label>최대 표시 그림 수
+          <input id="maxSlides" type="number" min="0" value="0">
+        </label>
+        <label>작업표시줄 여백(px)
+          <input id="safeAreaPaddingPixels" type="number" min="0" value="24">
+        </label>
+        <label>표시 방식
+          <select id="wallpaperStyle">
+            <option>Fit</option>
+            <option>Fill</option>
+            <option>Stretch</option>
+            <option>Center</option>
+            <option>Tile</option>
+            <option>Span</option>
+          </select>
+        </label>
+      </div>
+      <div class="checks">
+        <label><input id="enabled" type="checkbox" checked> 게시 사용</label>
+        <label><input id="shuffle" type="checkbox"> 그림 순서 섞기</label>
+        <label><input id="avoidTaskbar" type="checkbox" checked> 작업표시줄에 안 가리게 맞춤</label>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. 그림 업로드</h2>
+      <div id="dropZone" class="upload">
+        <div>
+          <strong>여기에 그림을 끌어다 놓으세요</strong>
+          <span>또는 클릭해서 PNG, JPG, BMP 파일을 선택하세요.</span>
+        </div>
+      </div>
+      <input id="fileInput" type="file" accept=".png,.jpg,.jpeg,.bmp,.gif" multiple hidden>
+    </section>
+
+    <section>
+      <div class="toolbar">
+        <h2>3. 적용할 그림 선택</h2>
+        <div class="buttons">
+          <button id="reloadBtn" type="button">새로고침</button>
+          <button id="selectAllBtn" type="button">전체 선택</button>
+          <button id="clearAllBtn" type="button">전체 해제</button>
+        </div>
+      </div>
+      <div id="imageGrid" class="image-grid"></div>
+    </section>
+  </main>
+
+  <div class="footer">
+    <div class="footer-inner">
+      <div id="message" class="message">준비 중...</div>
+      <button id="applyBtn" class="success" type="button">바로 적용</button>
+    </div>
+  </div>
+
+  <script>
+    const API = '/safety-wallpaper/api';
+    const POLICY_URL = `${location.origin}/safety-wallpaper/policy.json`;
+    const imageGrid = document.getElementById('imageGrid');
+    const message = document.getElementById('message');
+    const selectedUrls = new Set();
+    let imageList = [];
+
+    document.getElementById('policyUrl').textContent = POLICY_URL;
+
+    function setMessage(text) {
+      message.textContent = text;
+    }
+
+    function toLocalInputValue(value, fallback) {
+      const date = value ? new Date(value) : fallback;
+      const pad = n => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function fromLocalInputValue(value) {
+      return value.length === 16 ? `${value}:00` : value;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes > 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+      if (bytes > 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+      return `${bytes} B`;
+    }
+
+    async function loadPolicy() {
+      const res = await fetch(`${API}/policy`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('정책을 읽지 못했습니다.');
+      const policy = await res.json();
+      const now = new Date();
+      const nextYear = new Date(now);
+      nextYear.setFullYear(nextYear.getFullYear() + 1);
+
+      document.getElementById('enabled').checked = policy.enabled !== false;
+      document.getElementById('campaignStart').value = toLocalInputValue(policy.campaignStart, now);
+      document.getElementById('campaignEnd').value = toLocalInputValue(policy.campaignEnd, nextYear);
+      document.getElementById('policyPollSeconds').value = policy.policyPollSeconds || 600;
+      document.getElementById('slideIntervalSeconds').value = policy.slideIntervalSeconds || 30;
+      document.getElementById('maxSlides').value = policy.maxSlides || 0;
+      document.getElementById('safeAreaPaddingPixels').value = policy.safeAreaPaddingPixels ?? 24;
+      document.getElementById('wallpaperStyle').value = policy.wallpaperStyle || 'Fit';
+      document.getElementById('shuffle').checked = !!policy.shuffle;
+      document.getElementById('avoidTaskbar').checked = policy.avoidTaskbar !== false;
+
+      selectedUrls.clear();
+      (policy.slides || []).forEach(slide => {
+        if (slide.enabled !== false) selectedUrls.add(slide.url || slide.file);
+      });
+    }
+
+    async function loadImages() {
+      const res = await fetch(`${API}/images`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('그림 목록을 읽지 못했습니다.');
+      const data = await res.json();
+      imageList = data.images || [];
+      renderImages();
+    }
+
+    function renderImages() {
+      imageGrid.innerHTML = '';
+
+      if (imageList.length === 0) {
+        imageGrid.innerHTML = '<div class="message">아직 업로드된 그림이 없습니다.</div>';
+        return;
+      }
+
+      imageList.forEach(image => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        if (selectedUrls.has(image.url)) card.classList.add('selected');
+
+        const img = document.createElement('img');
+        img.className = 'thumb';
+        img.src = `/safety-wallpaper/${image.url}?v=${encodeURIComponent(image.version)}`;
+        img.alt = image.name;
+
+        const body = document.createElement('div');
+        body.className = 'card-body';
+
+        const row = document.createElement('label');
+        row.className = 'select-row';
+
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.checked = selectedUrls.has(image.url);
+        check.addEventListener('change', () => {
+          if (check.checked) selectedUrls.add(image.url);
+          else selectedUrls.delete(image.url);
+          card.classList.toggle('selected', check.checked);
+        });
+
+        const title = document.createElement('div');
+        title.className = 'card-title';
+        title.textContent = image.name;
+
+        row.appendChild(check);
+        row.appendChild(document.createTextNode('배포'));
+
+        const meta = document.createElement('div');
+        meta.className = 'card-meta';
+        meta.textContent = `${formatBytes(image.size)} · ${image.modified}`;
+
+        body.appendChild(row);
+        body.appendChild(title);
+        body.appendChild(meta);
+        card.appendChild(img);
+        card.appendChild(body);
+        imageGrid.appendChild(card);
+      });
+    }
+
+    async function uploadFiles(files) {
+      const accepted = [...files].filter(file => /\.(png|jpg|jpeg|bmp|gif)$/i.test(file.name));
+      if (accepted.length === 0) {
+        setMessage('업로드할 수 있는 그림 파일이 없습니다.');
+        return;
+      }
+
+      const uploadedUrls = [];
+
+      for (const file of accepted) {
+        setMessage(`업로드 중: ${file.name}`);
+        const res = await fetch(`${API}/upload?name=${encodeURIComponent(file.name)}`, {
+          method: 'POST',
+          body: file
+        });
+
+        if (!res.ok) throw new Error(`${file.name} 업로드 실패`);
+        const saved = await res.json();
+        if (saved.url) uploadedUrls.push(saved.url);
+      }
+
+      await loadImages();
+      uploadedUrls.forEach(url => selectedUrls.add(url));
+      renderImages();
+      setMessage(`${accepted.length}개 그림을 업로드했습니다.`);
+    }
+
+    function buildPolicy() {
+      const selectedImages = imageList.filter(image => selectedUrls.has(image.url));
+      const stamp = new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+
+      return {
+        policyVersion: stamp,
+        enabled: document.getElementById('enabled').checked,
+        campaignStart: fromLocalInputValue(document.getElementById('campaignStart').value),
+        campaignEnd: fromLocalInputValue(document.getElementById('campaignEnd').value),
+        policyPollSeconds: Number(document.getElementById('policyPollSeconds').value || 600),
+        slideIntervalSeconds: Number(document.getElementById('slideIntervalSeconds').value || 30),
+        configReloadSeconds: 10,
+        wallpaperStyle: document.getElementById('wallpaperStyle').value,
+        avoidTaskbar: document.getElementById('avoidTaskbar').checked,
+        safeAreaPaddingPixels: Number(document.getElementById('safeAreaPaddingPixels').value || 24),
+        shuffle: document.getElementById('shuffle').checked,
+        maxSlides: Number(document.getElementById('maxSlides').value || 0),
+        slides: selectedImages.map(image => ({
+          name: image.name,
+          url: image.url,
+          enabled: true,
+          version: image.version
+        }))
+      };
+    }
+
+    async function applyPolicy() {
+      const policy = buildPolicy();
+      const res = await fetch(`${API}/policy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify(policy, null, 2)
+      });
+
+      if (!res.ok) throw new Error('정책 저장 실패');
+      setMessage(`적용 완료: 선택된 그림 ${policy.slides.length}개`);
+      alert('적용했습니다. 임직원 PC는 다음 정책 확인 때 반영합니다.');
+    }
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', event => {
+      event.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', async event => {
+      event.preventDefault();
+      dropZone.classList.remove('dragover');
+      try { await uploadFiles(event.dataTransfer.files); }
+      catch (error) { setMessage(error.message); alert(error.message); }
+    });
+    fileInput.addEventListener('change', async () => {
+      try { await uploadFiles(fileInput.files); }
+      catch (error) { setMessage(error.message); alert(error.message); }
+      finally { fileInput.value = ''; }
+    });
+
+    document.getElementById('reloadBtn').addEventListener('click', async () => {
+      try {
+        await loadPolicy();
+        await loadImages();
+        setMessage('새로고침했습니다.');
+      } catch (error) {
+        setMessage(error.message);
+      }
+    });
+    document.getElementById('selectAllBtn').addEventListener('click', () => {
+      imageList.forEach(image => selectedUrls.add(image.url));
+      renderImages();
+    });
+    document.getElementById('clearAllBtn').addEventListener('click', () => {
+      selectedUrls.clear();
+      renderImages();
+    });
+    document.getElementById('applyBtn').addEventListener('click', async () => {
+      try { await applyPolicy(); }
+      catch (error) { setMessage(error.message); alert(error.message); }
+    });
+
+    (async function init() {
+      try {
+        await loadPolicy();
+        await loadImages();
+        setMessage('준비 완료');
+      } catch (error) {
+        setMessage(error.message);
+      }
+    })();
+  </script>
+</body>
+</html>

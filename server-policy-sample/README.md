@@ -1,97 +1,76 @@
-# Server Policy Sample
+# 서버 관리자 실행 안내
 
-Place this folder's contents under the web root that serves:
+이 폴더는 `172.16.19.35:28080`에서 안전 배경화면 정책과 이미지를 배포하는 서버용 파일입니다.
 
-`http://172.16.19.35:28080/safety-wallpaper/policy.json`
+## 서버에서 처음 실행
 
-Recommended server layout:
-
-```text
-safety-wallpaper/
-  policy.json
-  images/
-    no-yangrae-pinch.png
-    no-yangrae-fall.png
-```
-
-If this folder itself is used as the server root, keep the files like this:
-
-```text
-server-policy-sample/
-  StartSafetyWallpaperServer.bat
-  SafetyWallpaperStaticServer.ps1
-  policy.json
-  images/
-    no-yangrae-pinch.png
-    no-yangrae-fall.png
-```
-
-Run on `172.16.19.35`:
+관리자 권한 PowerShell 또는 CMD에서 실행하세요.
 
 ```bat
-cd /d C:\SafetyWallpaperServer
-StartSafetyWallpaperAdminGui.bat
+cd /d C:\SafetyWallpaperRepo\server-policy-sample
 StartSafetyWallpaperServer.bat
 ```
 
-Run the batch as Administrator the first time so it can reserve URL `http://+:28080/` and add a Windows Firewall inbound rule for TCP `28080`.
+처음 실행할 때 배치 파일이 자동으로 처리하는 것:
 
-Git-based install/update on `172.16.19.35`:
+- `http://+:28080/` 주소 사용 권한 등록
+- Windows 방화벽 TCP `28080` 인바운드 허용
+- 관리자 웹페이지 실행
+- 정책 파일과 이미지 파일 배포
+- 이미지 다운로드 동시 처리 최대 5명 제한
 
-```bat
-InstallOrUpdateSafetyWallpaperServerFromGit.bat https://github.com/rlckd2201/wallpaper_slide.git main C:\SafetyWallpaperRepo
+## 관리자 화면
+
+브라우저에서 아래 주소를 여세요.
+
+```text
+http://172.16.19.35:28080/safety-wallpaper/admin
 ```
 
-After that, update only:
+관리자가 할 일:
+
+- 그림을 업로드합니다. 드래그 앤 드롭 가능
+- 게시 시작일과 종료일을 정합니다.
+- 배포할 그림만 체크합니다.
+- `바로 적용`을 누릅니다.
+
+임직원 PC는 기본 10분마다 정책을 다시 확인하고, 바뀐 내용이 있으면 자동 반영합니다.
+
+## 서버 업데이트
+
+Git에서 최신 파일을 받은 뒤 서버를 다시 실행하세요.
 
 ```bat
-C:\SafetyWallpaperRepo\server-policy-sample\UpdateOnlyFromGit.bat C:\SafetyWallpaperRepo main
+cd /d C:\SafetyWallpaperRepo
+git pull
+cd /d C:\SafetyWallpaperRepo\server-policy-sample
+StartSafetyWallpaperServer.bat
 ```
 
-The repository must contain this project with `server-policy-sample\StartSafetyWallpaperServer.bat`.
+## 확인 명령
 
-Admin GUI:
-- Run `StartSafetyWallpaperAdminGui.bat` on the server.
-- Add images through `Add Images`.
-- Check only the images that should be distributed.
-- Set posting period, slide wait time, polling interval, shuffle, and taskbar-safe layout.
-- Click `Save Policy`.
-- User agents check the policy every 10 minutes by default and apply changes when `policy.json` changes.
-
-Quick test on the server:
+서버 안에서 확인:
 
 ```bat
 powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing http://127.0.0.1:28080/safety-wallpaper/policy.json"
 ```
 
-Quick test from a user PC:
+사용자 PC에서 확인:
 
 ```bat
 tcping 172.16.19.35 28080
 ```
 
-Manual firewall command on the server:
+사용자 PC에서 접속이 안 되면 서버 방화벽을 확인하세요.
 
 ```bat
 netsh advfirewall firewall add rule name="Safety Wallpaper Server 28080" dir=in action=allow protocol=TCP localport=28080 profile=any
 ```
 
-Agent behavior:
-- Each user PC reads `policy.json` every `policyPollSeconds` seconds.
-- Default poll interval is 600 seconds, which is 10 minutes.
-- Image URLs may be relative to `policy.json`, absolute HTTP URLs, file paths, or UNC paths.
-- The agent downloads images into `.runtime/policy-cache/images`.
-- The server allows up to 5 concurrent image downloads; additional image requests wait in a queue.
-- Policy JSON requests are not counted as image downloads and continue to respond immediately.
-- If the server is temporarily unavailable, the agent keeps using the last cached policy and images.
-- If no valid policy or image cache exists, the agent applies a plain black wallpaper.
+## 배포 정책 주소
 
-Policy controls:
-- `enabled`: turn the campaign on or off.
-- `campaignStart`, `campaignEnd`: active posting period.
-- `slideIntervalSeconds`: wait time between wallpaper changes.
-- `policyPollSeconds`: server check interval.
-- `maxSlides`: `0` means use every enabled slide; a positive number limits the slide count from the top of the list.
-- `shuffle`: randomize slide order. Every enabled slide is shown once per cycle before the next reshuffle.
-- `avoidTaskbar`: keep slide content above the taskbar.
-- `safeAreaPaddingPixels`: extra black margin inside the taskbar-safe area.
+임직원 PC 에이전트가 보는 주소입니다.
+
+```text
+http://172.16.19.35:28080/safety-wallpaper/policy.json
+```

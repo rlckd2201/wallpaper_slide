@@ -69,3 +69,15 @@
 - Static server PowerShell parser check passed.
 - C# `Add-Type` compile path passed; local run stopped at expected `HttpListener` URL ACL permission without admin rights.
 - `graphify update .` refused to overwrite because the C# server rewrite reduced node count from 56 to 54; CLI `--force` did not override it.
+- User clarified the admin UI must be a web page, not a separate WinForms GUI.
+- Added web admin page at `/safety-wallpaper/admin`.
+- Added web APIs: `GET /safety-wallpaper/api/policy`, `POST /safety-wallpaper/api/policy`, `GET /safety-wallpaper/api/images`, `POST /safety-wallpaper/api/upload`.
+- Admin page supports drag-and-drop image upload, image selection, posting period settings, and a single `바로 적용` button.
+- Updated upload API to return the saved `images/...` URL and updated `admin.html` to select that exact uploaded URL after upload.
+- Rechecked `SafetyWallpaperStaticServer.ps1` with the PowerShell parser: `STATIC_SERVER_PARSE_OK`.
+- A test run briefly failed after adding literal Korean C# strings because Windows PowerShell 5.1 `Add-Type` corrupted them while writing the temporary `.cs` file.
+- Replaced Korean C# string literals with ASCII `\uXXXX` escapes; the compiled output text remains Korean.
+- Retest result: `COMPILE_OK_URLACL_REQUIRED`, meaning C# compiled and reached the expected `HttpListener` URL permission boundary.
+- Local temporary server launch reached `$server.Start()` and then failed with expected `HttpListener` access denied because this non-elevated session does not own the temporary `http://+:<port>/` URL reservation.
+- `StartSafetyWallpaperServer.bat` is still the intended server launch path because it reserves `http://+:28080/` and creates the TCP `28080` firewall rule when run as Administrator.
+- `graphify update .`, `graphify update . --force`, and `graphify update . force=True` all refused to overwrite `graphify-out/graph.json` because the new graph has 54 nodes while the existing graph has 56.
