@@ -19,6 +19,8 @@
 
     * { box-sizing: border-box; }
 
+    [hidden] { display: none !important; }
+
     body {
       margin: 0;
       font-family: "Malgun Gothic", "Segoe UI", sans-serif;
@@ -45,6 +47,65 @@
     header .status {
       font-size: 14px;
       color: #dbeafe;
+    }
+
+    .header-actions {
+      display: grid;
+      gap: 8px;
+      justify-items: end;
+    }
+
+    .header-actions button {
+      background: #e2e8f0;
+      color: #102033;
+      padding: 8px 12px;
+    }
+
+    .auth-view {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #e8eef7;
+    }
+
+    .auth-panel {
+      width: min(440px, 100%);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .auth-panel h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .auth-panel h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .auth-form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .auth-form button {
+      background: var(--blue);
+      color: #fff;
+      padding: 12px 16px;
+      font-size: 15px;
+    }
+
+    .auth-message {
+      min-height: 20px;
+      color: var(--red);
+      font-size: 14px;
     }
 
     main {
@@ -276,12 +337,51 @@
   </style>
 </head>
 <body>
+  <div id="authView" class="auth-view" hidden>
+    <section class="auth-panel">
+      <h1>안전 배경화면 관리자</h1>
+      <div id="loginPanel">
+        <h2>로그인</h2>
+        <form id="loginForm" class="auth-form">
+          <label>아이디
+            <input id="loginId" type="text" autocomplete="username" placeholder="메일 @ 앞 아이디">
+          </label>
+          <label>비밀번호
+            <input id="loginPassword" type="password" autocomplete="current-password">
+          </label>
+          <button type="submit">로그인</button>
+        </form>
+      </div>
+      <div id="changePanel" hidden>
+        <h2>초기 비밀번호 변경</h2>
+        <form id="changeForm" class="auth-form">
+          <label>현재 비밀번호
+            <input id="currentPassword" type="password" autocomplete="current-password">
+          </label>
+          <label>새 비밀번호
+            <input id="newPassword" type="password" autocomplete="new-password">
+          </label>
+          <label>새 비밀번호 확인
+            <input id="confirmPassword" type="password" autocomplete="new-password">
+          </label>
+          <button type="submit">비밀번호 변경</button>
+        </form>
+      </div>
+      <div id="authMessage" class="auth-message"></div>
+    </section>
+  </div>
+
+  <div id="appView" hidden>
   <header>
     <div>
       <h1>안전 배경화면 배포 관리자</h1>
       <div class="status">이미지를 올리고, 게시기간을 정한 뒤, 적용할 그림을 선택해서 바로 반영합니다.</div>
     </div>
-    <div class="status" id="policyUrl"></div>
+    <div class="header-actions">
+      <div class="status" id="userStatus"></div>
+      <div class="status" id="policyUrl"></div>
+      <button id="logoutBtn" type="button">로그아웃</button>
+    </div>
   </header>
 
   <main>
@@ -354,19 +454,117 @@
       <button id="applyBtn" class="success" type="button">바로 적용</button>
     </div>
   </div>
+  </div>
 
   <script>
     const API = '/safety-wallpaper/api';
     const POLICY_URL = `${location.origin}/safety-wallpaper/policy.json`;
+    const authView = document.getElementById('authView');
+    const appView = document.getElementById('appView');
+    const loginPanel = document.getElementById('loginPanel');
+    const changePanel = document.getElementById('changePanel');
+    const authMessage = document.getElementById('authMessage');
     const imageGrid = document.getElementById('imageGrid');
     const message = document.getElementById('message');
     const selectedUrls = new Set();
     let imageList = [];
+    let appLoaded = false;
 
     document.getElementById('policyUrl').textContent = POLICY_URL;
 
     function setMessage(text) {
       message.textContent = text;
+    }
+
+    function setAuthMessage(text) {
+      authMessage.textContent = text || '';
+    }
+
+    function showLogin(text) {
+      authView.hidden = false;
+      appView.hidden = true;
+      loginPanel.hidden = false;
+      changePanel.hidden = true;
+      setAuthMessage(text || '');
+      document.getElementById('loginPassword').value = '';
+      document.getElementById('loginId').focus();
+    }
+
+    function showChangePassword(text) {
+      authView.hidden = false;
+      appView.hidden = true;
+      loginPanel.hidden = true;
+      changePanel.hidden = false;
+      setAuthMessage(text || '초기 비밀번호를 반드시 변경해야 합니다.');
+      document.getElementById('currentPassword').focus();
+    }
+
+    function showApp(user) {
+      authView.hidden = true;
+      appView.hidden = false;
+      document.getElementById('userStatus').textContent = `${user.name} ${user.title}`;
+    }
+
+    async function apiFetch(url, options = {}) {
+      const res = await fetch(url, {
+        credentials: 'same-origin',
+        ...options
+      });
+
+      if (res.status === 401) {
+        showLogin('로그인이 필요합니다.');
+        throw new Error('로그인이 필요합니다.');
+      }
+
+      if (res.status === 403) {
+        let data = {};
+        try { data = await res.json(); } catch { data = {}; }
+        if (data.mustChangePassword) showChangePassword();
+        throw new Error('비밀번호 변경이 필요합니다.');
+      }
+
+      return res;
+    }
+
+    async function readErrorMessage(res, fallback) {
+      try {
+        const data = await res.json();
+        if (data.message === 'invalid_login') return '아이디 또는 비밀번호가 맞지 않습니다.';
+        if (data.message === 'current_password_invalid') return '현재 비밀번호가 맞지 않습니다.';
+        if (data.message === 'weak_password') return '새 비밀번호는 8자 이상이어야 합니다.';
+        if (data.message === 'same_password') return '새 비밀번호는 현재 비밀번호와 달라야 합니다.';
+      } catch {
+      }
+
+      return fallback;
+    }
+
+    async function initializeApp() {
+      await loadPolicy();
+      await loadImages();
+      appLoaded = true;
+      setMessage('준비 완료');
+    }
+
+    async function checkSession() {
+      const res = await fetch(`${API}/session`, {
+        cache: 'no-store',
+        credentials: 'same-origin'
+      });
+      const session = await res.json();
+
+      if (!session.authenticated) {
+        showLogin();
+        return;
+      }
+
+      if (session.mustChangePassword) {
+        showChangePassword();
+        return;
+      }
+
+      showApp(session.user);
+      await initializeApp();
     }
 
     function toLocalInputValue(value, fallback) {
@@ -386,7 +584,7 @@
     }
 
     async function loadPolicy() {
-      const res = await fetch(`${API}/policy`, { cache: 'no-store' });
+      const res = await apiFetch(`${API}/policy`, { cache: 'no-store' });
       if (!res.ok) throw new Error('정책을 읽지 못했습니다.');
       const policy = await res.json();
       const now = new Date();
@@ -411,7 +609,7 @@
     }
 
     async function loadImages() {
-      const res = await fetch(`${API}/images`, { cache: 'no-store' });
+      const res = await apiFetch(`${API}/images`, { cache: 'no-store' });
       if (!res.ok) throw new Error('그림 목록을 읽지 못했습니다.');
       const data = await res.json();
       imageList = data.images || [];
@@ -482,7 +680,7 @@
 
       for (const file of accepted) {
         setMessage(`업로드 중: ${file.name}`);
-        const res = await fetch(`${API}/upload?name=${encodeURIComponent(file.name)}`, {
+        const res = await apiFetch(`${API}/upload?name=${encodeURIComponent(file.name)}`, {
           method: 'POST',
           body: file
         });
@@ -526,7 +724,7 @@
 
     async function applyPolicy() {
       const policy = buildPolicy();
-      const res = await fetch(`${API}/policy`, {
+      const res = await apiFetch(`${API}/policy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(policy, null, 2)
@@ -580,13 +778,84 @@
       catch (error) { setMessage(error.message); alert(error.message); }
     });
 
+    document.getElementById('loginForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      setAuthMessage('');
+
+      const id = document.getElementById('loginId').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      try {
+        const res = await fetch(`${API}/login`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          body: JSON.stringify({ id, password })
+        });
+
+        if (!res.ok) throw new Error(await readErrorMessage(res, '로그인 실패'));
+        const data = await res.json();
+
+        if (data.mustChangePassword) {
+          showChangePassword();
+          return;
+        }
+
+        showApp(data.user);
+        await initializeApp();
+      } catch (error) {
+        showLogin(error.message);
+      }
+    });
+
+    document.getElementById('changeForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      setAuthMessage('');
+
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (newPassword !== confirmPassword) {
+        setAuthMessage('새 비밀번호 확인이 맞지 않습니다.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/change-password`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          body: JSON.stringify({ currentPassword, newPassword })
+        });
+
+        if (!res.ok) throw new Error(await readErrorMessage(res, '비밀번호 변경 실패'));
+        const data = await res.json();
+
+        document.getElementById('currentPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+        showApp(data.user);
+        await initializeApp();
+      } catch (error) {
+        setAuthMessage(error.message);
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch(`${API}/logout`, {
+        method: 'POST',
+        credentials: 'same-origin'
+      });
+      appLoaded = false;
+      showLogin('로그아웃했습니다.');
+    });
+
     (async function init() {
       try {
-        await loadPolicy();
-        await loadImages();
-        setMessage('준비 완료');
+        await checkSession();
       } catch (error) {
-        setMessage(error.message);
+        showLogin(error.message);
       }
     })();
   </script>

@@ -10,6 +10,8 @@
 
 ## 관리자 변경 항목
 - 관리자 페이지: `http://172.16.19.35:28080/safety-wallpaper/admin`
+- 관리자 페이지는 환경안전팀 계정 로그인 후 사용할 수 있습니다.
+- 초기 비밀번호는 평문 저장하지 않고 해시로만 보관하며, 첫 로그인 시 비밀번호 변경을 강제합니다.
 - 서버 정책 파일: `http://172.16.19.35:28080/safety-wallpaper/policy.json`
 - Git 저장소: `https://github.com/rlckd2201/wallpaper_slide.git`
 - 사용자 PC 로컬 설정: `config.json`에서 정책 URL, 10분 동기화 간격, 캐시 폴더만 관리합니다.

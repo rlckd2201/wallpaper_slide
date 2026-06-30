@@ -1,0 +1,54 @@
+{
+  "users": [
+    {
+      "id": "nautes38",
+      "name": "김상표",
+      "title": "책임매니저",
+      "email": "nautes38@dae-seung.co.kr",
+      "enabled": true,
+      "mustChangePassword": true,
+      "passwordHash": "pbkdf2-sha1:120000:xsogec07ZS7nLXN1hJNUBQ==:iV5GVfW+leHffUWuzuuZkTQ5Q5Dr2YgWWAAdH6H+t2A=",
+      "lastPasswordChange": ""
+    },
+    {
+      "id": "gudeh90",
+      "name": "김형도",
+      "title": "매니저",
+      "email": "gudeh90@dae-seung.co.kr",
+      "enabled": true,
+      "mustChangePassword": true,
+      "passwordHash": "pbkdf2-sha1:120000:Sxas9l6sGY+ej895LmHilA==:RcjWE9jpx90NoX5klmPTXArOZ02RZtH2ujTUdOutgXQ=",
+      "lastPasswordChange": ""
+    },
+    {
+      "id": "qwer0818",
+      "name": "박형규",
+      "title": "매니저",
+      "email": "qwer0818@dae-seung.co.kr",
+      "enabled": true,
+      "mustChangePassword": true,
+      "passwordHash": "pbkdf2-sha1:120000:jRysVCs75O/OLfB5G7P0jA==:lhtzA6IEXm+lZWcAiyemllVSCPG8bX4c5SzqHRGKFZ8=",
+      "lastPasswordChange": ""
+    },
+    {
+      "id": "dbwldud96",
+      "name": "유지영",
+      "title": "매니저",
+      "email": "dbwldud96@dae-seung.co.kr",
+      "enabled": true,
+      "mustChangePassword": true,
+      "passwordHash": "pbkdf2-sha1:120000:sqbFIxwb/1fePEmtjBN/xw==:chcW148Ww20r+ORrvCs1pw+rgXXhs+YKs/zvKw8rk5w=",
+      "lastPasswordChange": ""
+    },
+    {
+      "id": "kqwer15",
+      "name": "김준형",
+      "title": "매니저",
+      "email": "kqwer15@dae-seung.co.kr",
+      "enabled": true,
+      "mustChangePassword": true,
+      "passwordHash": "pbkdf2-sha1:120000:TC+iabVP89IhWPxL2K3cgA==:pmCsLzT/s3VIbNHz9/fmeekay96mcWE0A+lKee2YAmg=",
+      "lastPasswordChange": ""
+    }
+  ]
+}

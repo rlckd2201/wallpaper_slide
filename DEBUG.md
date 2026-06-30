@@ -81,3 +81,12 @@
 - Local temporary server launch reached `$server.Start()` and then failed with expected `HttpListener` access denied because this non-elevated session does not own the temporary `http://+:<port>/` URL reservation.
 - `StartSafetyWallpaperServer.bat` is still the intended server launch path because it reserves `http://+:28080/` and creates the TCP `28080` firewall rule when run as Administrator.
 - `graphify update .`, `graphify update . --force`, and `graphify update . force=True` all refused to overwrite `graphify-out/graph.json` because the new graph has 54 nodes while the existing graph has 56.
+- Added environment/safety team admin seed file `server-policy-sample/admin-users.sample.json` with 5 accounts and PBKDF2 password hashes only.
+- Verified all seeded admin password hashes match the provided initial password and have `mustChangePassword=true`: `ADMIN_HASHES_OK`.
+- Added `server-policy-sample/admin-users.json` to `.gitignore`; server copies the sample file there on first start and writes changed passwords there.
+- Added admin session/login/change-password/logout endpoints to `SafetyWallpaperStaticServer.ps1`.
+- Admin API routes now require login, while static `policy.json` and image files stay publicly readable for employee agents.
+- Admin web page now shows login first and forces password change before showing policy controls.
+- Rechecked `SafetyWallpaperStaticServer.ps1` parser after auth changes: `STATIC_SERVER_PARSE_OK`.
+- Auth server retest result: `COMPILE_OK_URLACL_REQUIRED`, meaning the auth-enabled C# compiled and reached the expected non-elevated URL permission boundary.
+- `graphify update .` was retried after auth changes and still refused to overwrite because the new graph has 54 nodes while the existing graph has 56.

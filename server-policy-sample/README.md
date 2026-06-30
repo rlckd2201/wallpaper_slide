@@ -27,6 +27,14 @@ StartSafetyWallpaperServer.bat
 http://172.16.19.35:28080/safety-wallpaper/admin
 ```
 
+관리자 로그인:
+
+- 환경안전팀 관리자 5명만 로그인할 수 있습니다.
+- 아이디는 메일 주소의 `@` 앞 부분입니다.
+- 첫 로그인 시 초기 비밀번호 변경이 강제됩니다.
+- 실제 계정 상태와 변경된 비밀번호 해시는 `admin-users.json`에 저장됩니다.
+- `admin-users.json`은 Git에서 제외되므로 서버에서 바뀐 비밀번호가 `git pull`로 덮이지 않습니다.
+
 관리자가 할 일:
 
 - 그림을 업로드합니다. 드래그 앤 드롭 가능

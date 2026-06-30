@@ -19,6 +19,8 @@
 - [x] Add server-side git clone/pull install/update batches.
 - [x] Add server-side web administrator page for image upload, drag and drop, selection, posting period, and slide policy management.
 - [x] Limit server image download concurrency to 5 and queue additional image requests.
+- [x] Add web administrator login for environment/safety team accounts.
+- [x] Force seeded administrator accounts to change the initial password on first login.
 - Add installer/update strategy and uninstall behavior.
 - Add tests or manual verification checklist for image change, date expiry, startup, and black background fallback.
 
