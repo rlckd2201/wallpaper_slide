@@ -33,7 +33,7 @@ cd /d C:\SafetyWallpaperServer
 StartSafetyWallpaperServer.bat
 ```
 
-Run the batch as Administrator the first time so `netsh http add urlacl` can reserve port `28080`.
+Run the batch as Administrator the first time so it can reserve URL `http://+:28080/` and add a Windows Firewall inbound rule for TCP `28080`.
 
 Git-based install/update on `172.16.19.35`:
 
@@ -59,6 +59,12 @@ Quick test from a user PC:
 
 ```bat
 tcping 172.16.19.35 28080
+```
+
+Manual firewall command on the server:
+
+```bat
+netsh advfirewall firewall add rule name="Safety Wallpaper Server 28080" dir=in action=allow protocol=TCP localport=28080 profile=any
 ```
 
 Agent behavior:

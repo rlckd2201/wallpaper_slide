@@ -58,3 +58,5 @@
 - Added `.gitignore` to exclude `.runtime`, `logs`, and `graphify-out`.
 - Initialized local git repository, committed project files, and pushed branch `main` to `https://github.com/rlckd2201/wallpaper_slide.git`.
 - Fixed `StartSafetyWallpaperServer.bat` argument quoting by trimming the trailing slash from `%~dp0`; the trailing slash caused PowerShell to receive `-Root` and `-Port` as a broken combined argument on the server.
+- User reported server-local URL opens but user PC times out while SYN reaches the server; likely Windows Firewall inbound block for TCP 28080.
+- Added automatic Windows Firewall inbound allow rule creation to `StartSafetyWallpaperServer.bat`.
