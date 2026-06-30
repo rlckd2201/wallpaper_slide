@@ -293,6 +293,16 @@
       font-size: 12px;
     }
 
+    .card-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .card-actions button {
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+
     .select-row {
       display: flex;
       align-items: center;
@@ -771,9 +781,24 @@
         meta.className = 'card-meta';
         meta.textContent = `${formatBytes(image.size)} · ${image.modified}`;
 
+        const actions = document.createElement('div');
+        actions.className = 'card-actions';
+
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'warn';
+        deleteButton.textContent = '삭제';
+        deleteButton.addEventListener('click', async () => {
+          try { await deleteImage(image); }
+          catch (error) { setMessage(error.message); alert(error.message); }
+        });
+
+        actions.appendChild(deleteButton);
+
         body.appendChild(row);
         body.appendChild(title);
         body.appendChild(meta);
+        body.appendChild(actions);
         card.appendChild(img);
         card.appendChild(body);
         imageGrid.appendChild(card);
@@ -808,6 +833,33 @@
       uploadedUrls.forEach(url => selectedUrls.add(url));
       renderImages();
       setMessage(`${accepted.length}개 그림을 업로드했습니다.`);
+    }
+
+    async function deleteImage(image) {
+      if (!confirm(`${image.name} 파일을 삭제할까요?\n삭제하면 현재 배포 정책에서도 자동으로 빠집니다.`)) return;
+
+      const res = await apiFetch(`${API}/images`, {
+        method: 'DELETE',
+        headers: {
+          'X-Image-Url-Base64': toBase64Utf8(image.url)
+        }
+      });
+
+      if (!res.ok) {
+        let detail = '이미지 삭제 실패';
+        try {
+          const text = await res.text();
+          detail = text || detail;
+        } catch {
+          detail = '이미지 삭제 실패';
+        }
+        throw new Error(detail);
+      }
+
+      selectedUrls.delete(image.url);
+      imageList = imageList.filter(item => item.url !== image.url);
+      renderImages();
+      setMessage(`삭제 완료: ${image.name}`);
     }
 
     function buildPolicy() {

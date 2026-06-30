@@ -52,6 +52,7 @@
 - Tray menu text is generated from Unicode code points in `SafetyWallpaperTray.ps1` so Windows PowerShell 5.1 cannot corrupt Korean menu labels when reading UTF-8 files without BOM.
 - Admin image uploads now send the original browser filename through `X-File-Name-Base64`, and the server decodes it as UTF-8 before saving. This prevents Korean upload filenames from being corrupted on future uploads.
 - Existing images already saved with corrupted names must be deleted/reuploaded or manually renamed on the server because the original filename is no longer recoverable from the corrupted saved filename.
+- The admin image list now has a delete button for each image. Deleting an image removes the physical server file and also removes matching slide entries from `policy.json`.
 - Administrators manage uploads, selected images, posting period, and slide policy through the web page.
 - Server `StartSafetyWallpaperServer.bat` prints both the admin page URL and policy URL.
 - The hidden background agent was restarted after the slide cycle update.

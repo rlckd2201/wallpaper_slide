@@ -125,3 +125,11 @@
 - Rechecked server compile/start path after the upload filename fix: `COMPILE_OK_URLACL_REQUIRED`.
 - `git diff --check` passed; only CRLF conversion warnings were reported.
 - `graphify update .` was retried after the upload filename fix and still refused to overwrite because the new graph has 55 nodes while the existing graph has 56.
+- User reported that updating does not remove already-corrupted uploaded image names and the admin page had no delete button.
+- Added `DELETE /safety-wallpaper/api/images` with `X-Image-Url-Base64` so even Korean or corrupted filenames can be passed without query-string decoding damage.
+- Added admin image card delete buttons. Deleting an image removes the server file and calls `RemoveImageFromPolicy()` to remove matching slide URLs/files from `policy.json`.
+- Rechecked parser after the delete feature: `STATIC_SERVER_PARSE_OK`.
+- Rechecked server compile/start path after the delete feature: `COMPILE_OK_URLACL_REQUIRED`.
+- Verified .NET `Path.GetFileName()` extracts filenames correctly from `images/...` paths containing Korean text.
+- `git diff --check` passed; only CRLF conversion warnings were reported.
+- `graphify update .` was retried after the delete feature and still refused to overwrite because the new graph has 55 nodes while the existing graph has 56.

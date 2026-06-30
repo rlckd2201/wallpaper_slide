@@ -242,6 +242,14 @@ public sealed class SafetyWallpaperStaticServerRuntime
                 return;
             }
 
+            if (method == "DELETE" && route == "api/images")
+            {
+                string deletedUrl = DeleteUploadedImage(context.Request);
+                WriteAudit(currentUser, "image_delete", deletedUrl);
+                SendJson(context.Response, "{\"ok\":true,\"url\":\"" + EscapeJson(deletedUrl) + "\"}");
+                return;
+            }
+
             if (method == "POST" && route == "api/policy")
             {
                 SavePolicy(context.Request);
@@ -1430,26 +1438,43 @@ public sealed class SafetyWallpaperStaticServerRuntime
         return "images/" + fileName;
     }
 
+    private string DeleteUploadedImage(HttpListenerRequest request)
+    {
+        string imageUrl = GetDeleteImageUrl(request);
+        string fileName = Path.GetFileName(imageUrl.Replace('\\', '/'));
+
+        if (String.IsNullOrWhiteSpace(fileName))
+        {
+            throw new InvalidOperationException("\uc0ad\uc81c\ud560 \uc774\ubbf8\uc9c0 \uc815\ubcf4\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.");
+        }
+
+        string targetPath = Path.GetFullPath(Path.Combine(this.imagesPath, fileName));
+        string rootPath = Path.GetFullPath(this.imagesPath);
+
+        if (!IsPathUnderRoot(targetPath, rootPath))
+        {
+            throw new InvalidOperationException("\uc774\ubbf8\uc9c0 \uacbd\ub85c\uac00 \uc62c\ubc14\ub974\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.");
+        }
+
+        if (!File.Exists(targetPath))
+        {
+            throw new InvalidOperationException("\uc774\ubbf8\uc9c0 \ud30c\uc77c\uc744 \ucc3e\uc744 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.");
+        }
+
+        File.Delete(targetPath);
+
+        string deletedUrl = "images/" + fileName;
+        RemoveImageFromPolicy(deletedUrl);
+        return deletedUrl;
+    }
+
     private static string GetUploadedFileName(HttpListenerRequest request)
     {
-        string encodedName = request.Headers["X-File-Name-Base64"];
+        string decodedName = ReadUtf8Base64Header(request, "X-File-Name-Base64", "\uc5c5\ub85c\ub4dc \ud30c\uc77c\uba85\uc744 \uc77d\uc744 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.");
 
-        if (!String.IsNullOrWhiteSpace(encodedName))
+        if (!String.IsNullOrWhiteSpace(decodedName))
         {
-            try
-            {
-                byte[] bytes = Convert.FromBase64String(encodedName);
-                string decodedName = Encoding.UTF8.GetString(bytes);
-
-                if (!String.IsNullOrWhiteSpace(decodedName))
-                {
-                    return decodedName;
-                }
-            }
-            catch
-            {
-                throw new InvalidOperationException("\uc5c5\ub85c\ub4dc \ud30c\uc77c\uba85\uc744 \uc77d\uc744 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.");
-            }
+            return decodedName;
         }
 
         string rawName = request.QueryString["name"];
@@ -1460,6 +1485,129 @@ public sealed class SafetyWallpaperStaticServerRuntime
         }
 
         return Uri.UnescapeDataString(rawName);
+    }
+
+    private static string GetDeleteImageUrl(HttpListenerRequest request)
+    {
+        string decodedUrl = ReadUtf8Base64Header(request, "X-Image-Url-Base64", "\uc0ad\uc81c\ud560 \uc774\ubbf8\uc9c0 \uc815\ubcf4\ub97c \uc77d\uc744 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.");
+
+        if (!String.IsNullOrWhiteSpace(decodedUrl))
+        {
+            return decodedUrl;
+        }
+
+        string rawUrl = request.QueryString["url"];
+
+        if (String.IsNullOrWhiteSpace(rawUrl))
+        {
+            throw new InvalidOperationException("\uc0ad\uc81c\ud560 \uc774\ubbf8\uc9c0 \uc815\ubcf4\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.");
+        }
+
+        return Uri.UnescapeDataString(rawUrl);
+    }
+
+    private static string ReadUtf8Base64Header(HttpListenerRequest request, string headerName, string invalidMessage)
+    {
+        string encodedValue = request.Headers[headerName];
+
+        if (String.IsNullOrWhiteSpace(encodedValue))
+        {
+            return "";
+        }
+
+        try
+        {
+            byte[] bytes = Convert.FromBase64String(encodedValue);
+            return Encoding.UTF8.GetString(bytes);
+        }
+        catch
+        {
+            throw new InvalidOperationException(invalidMessage);
+        }
+    }
+
+    private void RemoveImageFromPolicy(string deletedUrl)
+    {
+        if (!File.Exists(this.policyPath))
+        {
+            return;
+        }
+
+        string text = File.ReadAllText(this.policyPath, Encoding.UTF8);
+
+        if (String.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        JavaScriptSerializer serializer = new JavaScriptSerializer();
+        Dictionary<string, object> policy = serializer.Deserialize<Dictionary<string, object>>(text);
+
+        if (policy == null)
+        {
+            return;
+        }
+
+        object slidesObj;
+
+        if (!policy.TryGetValue("slides", out slidesObj) || !(slidesObj is ArrayList))
+        {
+            return;
+        }
+
+        string deletedFileName = Path.GetFileName(deletedUrl.Replace('\\', '/'));
+        ArrayList keptSlides = new ArrayList();
+        bool changed = false;
+
+        foreach (object slideObj in (ArrayList)slidesObj)
+        {
+            Dictionary<string, object> slide = slideObj as Dictionary<string, object>;
+
+            if (slide != null &&
+                (IsSameImageReference(GetDictionaryString(slide, "url"), deletedUrl, deletedFileName) ||
+                 IsSameImageReference(GetDictionaryString(slide, "file"), deletedUrl, deletedFileName)))
+            {
+                changed = true;
+                continue;
+            }
+
+            keptSlides.Add(slideObj);
+        }
+
+        if (!changed)
+        {
+            return;
+        }
+
+        policy["slides"] = keptSlides;
+        policy["policyVersion"] = DateTime.Now.ToString("yyyyMMddHHmmss");
+        File.WriteAllText(this.policyPath, serializer.Serialize(policy), new UTF8Encoding(false));
+    }
+
+    private static bool IsSameImageReference(string value, string deletedUrl, string deletedFileName)
+    {
+        if (String.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        string normalized = value.Trim().Replace('\\', '/');
+
+        if (normalized.StartsWith("/safety-wallpaper/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized.Substring("/safety-wallpaper/".Length);
+        }
+        else if (normalized.StartsWith("safety-wallpaper/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized.Substring("safety-wallpaper/".Length);
+        }
+
+        if (String.Equals(normalized, deletedUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return String.Equals(Path.GetFileName(normalized), deletedFileName, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsPathUnderRoot(string fullPath, string rootPath)

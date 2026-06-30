@@ -20,6 +20,7 @@
 - [x] Add simple server-side batch and PowerShell static server for `172.16.19.35:28080`.
 - [x] Add server-side git clone/pull install/update batches.
 - [x] Add server-side web administrator page for image upload, drag and drop, selection, posting period, and slide policy management.
+- [x] Add web administrator image delete button/API for removing broken or obsolete uploads.
 - [x] Limit server image download concurrency to 5 and queue additional image requests.
 - [x] Add web administrator login for environment/safety team accounts.
 - [x] Force seeded administrator accounts to change the initial password on first login.
@@ -32,7 +33,7 @@
 
 ## Open Questions
 - Confirm administrator web page workflow on `172.16.19.35:28080/safety-wallpaper/admin` after pulling the latest server files.
-- Existing broken uploaded filenames on the server need delete/reupload or manual rename after this encoding fix is deployed.
+- Existing broken uploaded filenames on the server can now be removed from the administrator page and then reuploaded.
 - Server can now clone `https://github.com/rlckd2201/wallpaper_slide.git`.
 - Should users be allowed to close/pause the slide show?
 - Which Windows versions must be supported?

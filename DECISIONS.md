@@ -28,6 +28,7 @@
 - Tray policy refresh writes `.runtime/refresh.signal`; the agent detects it and syncs policy immediately.
 - Tray UI Korean labels are built from Unicode code points instead of literal Korean strings to avoid Windows PowerShell 5.1 ANSI decoding corruption.
 - Web admin uploads send Korean filenames as a UTF-8 Base64 HTTP header instead of a URL query parameter to avoid `HttpListener` query-string decoding corruption.
+- Web admin image deletion removes the physical image file and automatically removes matching slide references from `policy.json`.
 - Server static file service limits concurrent image downloads to 5; policy JSON requests are not throttled.
 - Uploaded image requests return the saved `images/...` URL so the web page can select the actual stored file.
 - Store admin passwords as PBKDF2 hashes only; do not store the initial password as plaintext in the repo.
