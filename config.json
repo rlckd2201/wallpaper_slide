@@ -1,0 +1,6 @@
+{
+  "serverPolicyUrl": "http://172.16.19.35:28080/safety-wallpaper/policy.json",
+  "serverPollSeconds": 600,
+  "requestTimeoutSeconds": 20,
+  "cacheFolder": ".runtime\\policy-cache"
+}

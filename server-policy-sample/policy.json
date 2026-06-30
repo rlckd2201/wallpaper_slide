@@ -1,0 +1,28 @@
+{
+  "policyVersion": "2026-06-30-001",
+  "enabled": true,
+  "campaignStart": "2026-06-30T00:00:00",
+  "campaignEnd": "2099-12-31T23:59:59",
+  "policyPollSeconds": 600,
+  "slideIntervalSeconds": 30,
+  "configReloadSeconds": 10,
+  "wallpaperStyle": "Fit",
+  "avoidTaskbar": true,
+  "safeAreaPaddingPixels": 24,
+  "shuffle": false,
+  "maxSlides": 0,
+  "slides": [
+    {
+      "name": "끼임 사고 예방",
+      "url": "images/no-yangrae-pinch.png",
+      "enabled": true,
+      "version": "1"
+    },
+    {
+      "name": "추락 사고 예방",
+      "url": "images/no-yangrae-fall.png",
+      "enabled": true,
+      "version": "1"
+    }
+  ]
+}

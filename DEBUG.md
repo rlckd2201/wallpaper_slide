@@ -1,0 +1,58 @@
+# Debug Notes
+
+## 2026-06-30
+- Workspace initially contained no visible files.
+- `graphify --help` worked, so graphify is available.
+- `graphify update .` was attempted, but no code files were found, so no graph was generated.
+- Initial dry-run exposed a PowerShell array unrolling issue when no image files were present: `$images.Count` failed under `Set-StrictMode`.
+- Fixed by wrapping the `Get-SlideImages` call in `@(...)`.
+- Dry-run after fix selected `images/safety_01.png` successfully.
+- Added black desktop background color update so aspect-ratio bars also remain black.
+- Final dry-run selected `images/safety_01.png` successfully.
+- `graphify update .` succeeded after implementation: 14 nodes, 19 edges, 3 communities.
+- User-provided image folder checked: `C:\Users\user\Pictures\안전사고예방`.
+- Found 12 `.png` safety images there and changed `config.json` to use that absolute path.
+- Dry-run selected `C:\Users\user\Pictures\안전사고예방\노양래_끼임.png` successfully.
+- Removed generated sample images and the unused local `images` folder.
+- `graphify update .` succeeded after this path change: 14 nodes, 19 edges, 3 communities.
+- User reported that the taskbar covered the bottom of the wallpaper.
+- Added taskbar-safe rendering using `System.Windows.Forms.Screen.PrimaryScreen.WorkingArea`.
+- Current detected screen: 1920x1080, working area 1920x1032, so the taskbar consumes 48px.
+- Dry-run generated `.runtime/rendered/wallpaper_20260630114237500.bmp` and targeted it with `Stretch`.
+- Stopped the old running instance and restarted the slideshow with the new taskbar-safe renderer.
+- Runtime generated `.runtime/rendered/wallpaper_20260630114312952.bmp` and applied it successfully.
+- `graphify update .` succeeded after taskbar-safe rendering change: 16 nodes, 23 edges, 3 communities.
+- Converted `SafetyWallpaperSlideshow.ps1` into a central policy listener agent.
+- Default server policy endpoint is `http://172.16.19.35/safety-wallpaper/policy.json`.
+- Local `config.json` now stores only server policy URL, 10-minute poll interval, request timeout, and cache folder.
+- Added `RunSafetyWallpaperSlideshowHidden.vbs` so PowerShell runs hidden instead of keeping a Windows Terminal tab open.
+- Updated `StartSafetyWallpaperSlideshow.bat` to register `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\SafetyWallpaperSlideshow` and launch the hidden VBS.
+- Added `UnregisterSafetyWallpaperStartup.bat` to remove the startup entry and request agent stop.
+- Added `server-policy-sample/policy.json` and README for server-side operation.
+- Dry-run with local sample policy succeeded after fixing empty image array handling in `Sync-PolicyState`.
+- Running start batch created registry value: `wscript.exe //B //Nologo "C:\Users\user\Desktop\개발파일\바탕화면 슬라이드 쇼\RunSafetyWallpaperSlideshowHidden.vbs"`.
+- Current server endpoint returned HTTP 404, so the running agent used cached sample policy and applied black wallpaper because no cached images exist.
+- `graphify update .` succeeded after server-agent and hidden-startup changes: 36 nodes, 75 edges, 8 communities.
+- Port check with `tcping` found `80`, `8090`, and `18080` open on `172.16.19.35`.
+- Port `28080` returned no response on 4 probes and was selected as the server policy port.
+- Default policy URL changed to `http://172.16.19.35:28080/safety-wallpaper/policy.json`.
+- Running agent was restarted after the port change.
+- Runtime log confirmed requests now target `http://172.16.19.35:28080/safety-wallpaper/policy.json`.
+- Because no service is currently listening on `28080`, the agent timed out, used cached sample policy, and applied black wallpaper.
+- `graphify update .` succeeded after port change: 36 nodes, 75 edges, 8 communities.
+- Confirmed sequential mode already wrapped after the final image by resetting `slideIndex` to `0`.
+- Reworked slide selection to maintain an explicit per-cycle slide order so every image is shown once before restarting.
+- If `shuffle` is enabled, each cycle is shuffled, but images are not randomly repeated before all images in that cycle have been shown.
+- Local sample policy dry-run passed syntax/normalization checks.
+- A longer loop test was limited by the already-running agent waiting on server connection timeouts, so the agent was restarted afterward.
+- Hidden background agent restarted at `2026-06-30 12:05:58` after the slide cycle update.
+- `graphify update .` succeeded after slide cycle update: 36 nodes, 75 edges, 8 communities.
+- Added server-side `StartSafetyWallpaperServer.bat` and `SafetyWallpaperStaticServer.ps1` under `server-policy-sample`.
+- Local static server launch was blocked by missing `HttpListener` URL ACL, confirming the first server run must be elevated.
+- Added clearer admin/URL reservation checks to `StartSafetyWallpaperServer.bat`.
+- `graphify update .` succeeded after server batch/static server addition: 39 nodes, 77 edges, 10 communities.
+- Current workspace is not a git repository, so no remote URL is available from local context.
+- Added `InstallOrUpdateSafetyWallpaperServerFromGit.bat` and `UpdateOnlyFromGit.bat` under `server-policy-sample`.
+- `graphify update .` succeeded after git deployment batch addition: 39 nodes, 77 edges, 10 communities.
+- User provided GitHub repo: `https://github.com/rlckd2201/wallpaper_slide.git`.
+- Added `.gitignore` to exclude `.runtime`, `logs`, and `graphify-out`.
