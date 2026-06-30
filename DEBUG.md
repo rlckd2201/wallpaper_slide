@@ -145,3 +145,11 @@
 - Checked the BAT: it registers HKCU startup to `wscript.exe //B //Nologo "C:\Program Files\Geni\Genian\Patch\RunSafetyWallpaperSlideshowHidden.vbs"` and launches that VBS.
 - Deployment folder is missing `RunSafetyWallpaperSlideshowHidden.vbs`, `SafetyWallpaperSlideshow.ps1`, `SafetyWallpaperTray.ps1`, and `config.json`; therefore this NAC deployment is incomplete.
 - Current running SafetyWallpaper processes are from the local development workspace, not from `C:\Program Files\Geni\Genian\Patch`.
+- User clarified NAC can download a ZIP and execute BAT, but cannot extract ZIP itself.
+- Added `InstallSafetyWallpaperAgentFromZip.bat`: finds `SafetyWallpaperAgent.zip` in the same folder unless a ZIP path is passed, extracts to `%ProgramData%\SafetyWallpaper`, grants Users modify permission, finds `StartSafetyWallpaperSlideshow.bat`, and starts it.
+- Added `BuildSafetyWallpaperAgentZip.bat` and generated `dist/SafetyWallpaperAgent.zip` with the employee agent files.
+- Verified `BuildSafetyWallpaperAgentZip.bat` creates `dist/SafetyWallpaperAgent.zip`.
+- Verified installer extraction with explicit ZIP path and `/no-start` into a temp folder.
+- Verified NAC-style same-folder ZIP auto-detection with `/no-start` into a temp folder.
+- Rechecked packaged PowerShell scripts: `AGENT_PARSE_OK`, `TRAY_PARSE_OK`.
+- `graphify update .` succeeded after adding NAC ZIP bootstrap packaging: 56 nodes, 99 edges, 12 communities.

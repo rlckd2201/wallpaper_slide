@@ -12,6 +12,8 @@
 ### Current Workspace State
 - Initial source files were added.
 - `StartSafetyWallpaperSlideshow.bat` registers current-user startup and launches the hidden wallpaper slideshow process through `RunSafetyWallpaperSlideshowHidden.vbs`.
+- `InstallSafetyWallpaperAgentFromZip.bat` is the NAC bootstrap batch: it finds/extracts `SafetyWallpaperAgent.zip` to `%ProgramData%\SafetyWallpaper`, grants Users modify permission, and runs `StartSafetyWallpaperSlideshow.bat`.
+- `BuildSafetyWallpaperAgentZip.bat` creates `dist/SafetyWallpaperAgent.zip` containing the employee agent files needed by the NAC bootstrap batch.
 - `RunSafetyWallpaperSlideshowHidden.vbs` launches both `SafetyWallpaperSlideshow.ps1` and `SafetyWallpaperTray.ps1`.
 - `SafetyWallpaperTray.ps1` shows the employee tray icon and writes `.runtime/refresh.signal` when the user clicks policy refresh.
 - `StopSafetyWallpaperSlideshow.bat` requests shutdown through `.runtime/stop.signal`.
@@ -49,6 +51,7 @@
 - The current running instance was restarted after adding taskbar-safe rendering.
 - It does not show an installer UI.
 - It can be distributed as a folder and started by running the start `.bat`.
+- For NAC deployment, distribute two files together: `dist/SafetyWallpaperAgent.zip` and `InstallSafetyWallpaperAgentFromZip.bat`; NAC only needs to execute the BAT after both files exist in the same folder.
 - User PCs are now intended to operate as policy/image listener agents controlled by the central server.
 - Employee agents send `X-Safety-Wallpaper-Agent: SafetyWallpaperSlideshow` when checking policy and downloading images, so server receive logs can distinguish the agent from browser thumbnail requests.
 - Employee PCs have a tray icon for status, log opening, policy URL opening, and manual policy refresh.

@@ -6,6 +6,7 @@
 - Images must be administrator-replaceable after deployment.
 - The app must stop showing expired campaign images and return to a plain black background.
 - Use `.bat + PowerShell` as the first executable deployment format because the user allowed `.exe` or `.bat`.
+- NAC employee deployment uses two artifacts: `SafetyWallpaperAgent.zip` plus `InstallSafetyWallpaperAgentFromZip.bat`; the BAT extracts the ZIP to `%ProgramData%\SafetyWallpaper` and then starts/registers the agent.
 - Change the actual current-user Windows wallpaper rather than drawing a separate overlay window.
 - Use `http://172.16.19.35:28080/safety-wallpaper/policy.json` as the default central control policy endpoint.
 - Store only agent bootstrap settings in `config.json`.
