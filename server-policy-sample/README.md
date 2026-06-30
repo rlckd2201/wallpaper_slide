@@ -30,6 +30,7 @@ Run on `172.16.19.35`:
 
 ```bat
 cd /d C:\SafetyWallpaperServer
+StartSafetyWallpaperAdminGui.bat
 StartSafetyWallpaperServer.bat
 ```
 
@@ -48,6 +49,14 @@ C:\SafetyWallpaperRepo\server-policy-sample\UpdateOnlyFromGit.bat C:\SafetyWallp
 ```
 
 The repository must contain this project with `server-policy-sample\StartSafetyWallpaperServer.bat`.
+
+Admin GUI:
+- Run `StartSafetyWallpaperAdminGui.bat` on the server.
+- Add images through `Add Images`.
+- Check only the images that should be distributed.
+- Set posting period, slide wait time, polling interval, shuffle, and taskbar-safe layout.
+- Click `Save Policy`.
+- User agents check the policy every 10 minutes by default and apply changes when `policy.json` changes.
 
 Quick test on the server:
 

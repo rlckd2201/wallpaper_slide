@@ -10,6 +10,7 @@
 - Use `http://172.16.19.35:28080/safety-wallpaper/policy.json` as the default central control policy endpoint.
 - Store only agent bootstrap settings in `config.json`.
 - Store campaign period, slide timing, taskbar behavior, slide count, and image list in server `policy.json`.
+- Manage server `policy.json` and uploaded images through a Windows PowerShell WinForms administrator GUI.
 - Use a campaign-wide schedule for the first version.
 - Keep `avoidTaskbar` enabled by default and render active slides into the primary screen working area before applying them.
 - `StartSafetyWallpaperSlideshow.bat` registers a current-user startup entry and launches the agent through hidden VBS.

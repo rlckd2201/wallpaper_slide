@@ -12,7 +12,8 @@
 - 서버 정책: `http://172.16.19.35:28080/safety-wallpaper/policy.json`
 - Git repo: `https://github.com/rlckd2201/wallpaper_slide.git`
 - 사용자 PC 로컬 설정: `config.json`에서 정책 URL, 10분 동기화 간격, 캐시 폴더만 관리합니다.
-- 이미지와 캠페인 정책은 서버 `policy.json`과 서버 이미지 폴더에서 관리합니다.
+- 이미지와 캠페인 정책은 서버 관리자 GUI에서 관리합니다.
+- 서버 관리자 GUI: `server-policy-sample/StartSafetyWallpaperAdminGui.bat`
 - 서버에서 바로 띄울 때: `server-policy-sample/StartSafetyWallpaperServer.bat`
 - 서버에서 git으로 받을 때: `server-policy-sample/InstallOrUpdateSafetyWallpaperServerFromGit.bat`
 

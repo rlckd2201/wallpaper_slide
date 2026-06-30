@@ -21,6 +21,7 @@
 - Runtime logs are written to `logs/wallpaper-slideshow.log`.
 - `graphify` is installed and available.
 - Server-side git install/update batches are available under `server-policy-sample`.
+- Server-side administrator GUI is available as `server-policy-sample/StartSafetyWallpaperAdminGui.bat`.
 
 ### Next Session Start Checklist
 - Read `SESSION.md`, `TODO.md`, `DECISIONS.md`, and `DEBUG.md`.
@@ -34,5 +35,6 @@
 - It does not show an installer UI.
 - It can be distributed as a folder and started by running the start `.bat`.
 - User PCs are now intended to operate as policy/image listener agents controlled by the central server.
+- Administrators manage uploads, selected images, posting period, and slide policy through the server GUI.
 - The hidden background agent was restarted after the slide cycle update.
 - Local workspace was initialized as a git repository and pushed to `https://github.com/rlckd2201/wallpaper_slide.git` on branch `main`.

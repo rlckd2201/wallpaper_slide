@@ -60,3 +60,4 @@
 - Fixed `StartSafetyWallpaperServer.bat` argument quoting by trimming the trailing slash from `%~dp0`; the trailing slash caused PowerShell to receive `-Root` and `-Port` as a broken combined argument on the server.
 - User reported server-local URL opens but user PC times out while SYN reaches the server; likely Windows Firewall inbound block for TCP 28080.
 - Added automatic Windows Firewall inbound allow rule creation to `StartSafetyWallpaperServer.bat`.
+- Added `SafetyWallpaperAdminGui.ps1` and `StartSafetyWallpaperAdminGui.bat` for server-side administrator GUI policy management.
