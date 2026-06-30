@@ -160,3 +160,12 @@
 - Updated the super admin queue UI labels to show `현재 대기 중`, `최고 대기`, `누적 이미지 요청`, and `완료 이미지 요청` separately.
 - Rechecked queue status parser and server compile path: `STATIC_SERVER_PARSE_OK`, `COMPILE_OK_URLACL_REQUIRED`.
 - `git diff --check` passed; only CRLF conversion warnings were reported.
+- User clarified peak counters are not useful for the queue screen; the screen should show who is currently downloading, who is waiting, and completed history.
+- Added per-request image queue tracking with `ImageDownloadQueueItem` records. Queue status now returns `downloadingItems`, `waitingItems`, and `completedItems` arrays.
+- Each queue item includes IP, PC name, Windows user, path, agent, User-Agent, requested/start/completed times, and duration.
+- Removed peak active/waiting values from the web queue UI and replaced them with current downloading, current waiting, and recent completed tables.
+- Added `X-Safety-Wallpaper-Computer` and `X-Safety-Wallpaper-User` headers to employee agent requests.
+- Rebuilt `dist/SafetyWallpaperAgent.zip` after the agent header change.
+- Rechecked parsers and server compile path after queue item tracking: `AGENT_PARSE_OK`, `STATIC_SERVER_PARSE_OK`, `COMPILE_OK_URLACL_REQUIRED`.
+- `git diff --check` passed; only CRLF conversion warnings were reported.
+- `graphify update .` succeeded after queue item tracking: 56 nodes, 99 edges, 12 communities.

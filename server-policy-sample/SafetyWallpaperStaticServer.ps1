@@ -89,9 +89,26 @@ public sealed class AdminUserUpsertRequest
     public string password { get; set; }
 }
 
+public sealed class ImageDownloadQueueItem
+{
+    public long id;
+    public string ip;
+    public string computer;
+    public string user;
+    public string path;
+    public string agent;
+    public string userAgent;
+    public string status;
+    public DateTime requestedAt;
+    public DateTime startedAt;
+    public DateTime completedAt;
+    public long durationMilliseconds;
+}
+
 public sealed class SafetyWallpaperStaticServerRuntime
 {
     private const string SessionCookieName = "SafetyWallpaperAdminSession";
+    private const int CompletedImageHistoryLimit = 200;
     private readonly string rootPath;
     private readonly string policyPath;
     private readonly string imagesPath;
@@ -108,12 +125,14 @@ public sealed class SafetyWallpaperStaticServerRuntime
     private readonly HttpListener listener;
     private readonly object authLock = new object();
     private readonly object logLock = new object();
+    private readonly object imageQueueLock = new object();
     private readonly Dictionary<string, AdminUserRecord> adminUsers = new Dictionary<string, AdminUserRecord>(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, AdminSessionRecord> sessions = new Dictionary<string, AdminSessionRecord>(StringComparer.Ordinal);
+    private readonly Dictionary<long, ImageDownloadQueueItem> imageQueueItems = new Dictionary<long, ImageDownloadQueueItem>();
+    private readonly List<ImageDownloadQueueItem> imageCompletedItems = new List<ImageDownloadQueueItem>();
     private int imageDownloadsActive = 0;
     private int imageDownloadsWaiting = 0;
-    private int imageDownloadsPeakActive = 0;
-    private int imageDownloadsPeakWaiting = 0;
+    private long imageDownloadRequestSequence = 0;
     private long imageDownloadRequestsTotal = 0;
     private long imageDownloadsCompletedTotal = 0;
 
@@ -159,6 +178,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
     private void HandleRequest(HttpListenerContext context)
     {
         bool imageSlotAcquired = false;
+        ImageDownloadQueueItem imageQueueItem = null;
         AdminUserRecord currentUser = null;
 
         try
@@ -359,7 +379,8 @@ public sealed class SafetyWallpaperStaticServerRuntime
 
             if (isImage)
             {
-                imageSlotAcquired = AcquireImageDownloadSlot();
+                imageQueueItem = AcquireImageDownloadSlot(context.Request, route.Replace('\\', '/'));
+                imageSlotAcquired = true;
             }
 
             SendFile(context.Response, fullPath);
@@ -378,9 +399,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
         {
             if (imageSlotAcquired)
             {
-                Interlocked.Decrement(ref this.imageDownloadsActive);
-                Interlocked.Increment(ref this.imageDownloadsCompletedTotal);
-                this.imageSemaphore.Release();
+                CompleteImageDownloadSlot(imageQueueItem);
             }
 
             try
@@ -1131,28 +1150,44 @@ public sealed class SafetyWallpaperStaticServerRuntime
     {
         int active = Math.Max(0, Volatile.Read(ref this.imageDownloadsActive));
         int waiting = Math.Max(0, Volatile.Read(ref this.imageDownloadsWaiting));
-        int peakActive = Math.Max(0, Volatile.Read(ref this.imageDownloadsPeakActive));
-        int peakWaiting = Math.Max(0, Volatile.Read(ref this.imageDownloadsPeakWaiting));
         long totalRequests = Math.Max(0, Interlocked.Read(ref this.imageDownloadRequestsTotal));
         long totalCompleted = Math.Max(0, Interlocked.Read(ref this.imageDownloadsCompletedTotal));
+        StringBuilder builder = new StringBuilder();
 
-        return "{\"serverTime\":\"" + EscapeJson(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")) + "\"," +
-               "\"maxImageDownloads\":" + this.maxImageDownloads + "," +
-               "\"activeImageDownloads\":" + active + "," +
-               "\"waitingImageDownloads\":" + waiting + "," +
-               "\"availableImageSlots\":" + Math.Max(0, this.maxImageDownloads - active) + "," +
-               "\"peakActiveImageDownloads\":" + peakActive + "," +
-               "\"peakWaitingImageDownloads\":" + peakWaiting + "," +
-               "\"totalImageDownloadRequests\":" + totalRequests + "," +
-               "\"completedImageDownloads\":" + totalCompleted + "}";
+        builder.Append("{\"serverTime\":\"").Append(EscapeJson(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))).Append("\",");
+        builder.Append("\"maxImageDownloads\":").Append(this.maxImageDownloads).Append(",");
+        builder.Append("\"activeImageDownloads\":").Append(active).Append(",");
+        builder.Append("\"waitingImageDownloads\":").Append(waiting).Append(",");
+        builder.Append("\"availableImageSlots\":").Append(Math.Max(0, this.maxImageDownloads - active)).Append(",");
+        builder.Append("\"totalImageDownloadRequests\":").Append(totalRequests).Append(",");
+        builder.Append("\"completedImageDownloads\":").Append(totalCompleted).Append(",");
+
+        lock (this.imageQueueLock)
+        {
+            builder.Append("\"downloadingItems\":[");
+            AppendQueueItemsByStatus(builder, "downloading");
+            builder.Append("],\"waitingItems\":[");
+            AppendQueueItemsByStatus(builder, "waiting");
+            builder.Append("],\"completedItems\":[");
+            AppendCompletedQueueItems(builder);
+            builder.Append("]}");
+        }
+
+        return builder.ToString();
     }
 
-    private bool AcquireImageDownloadSlot()
+    private ImageDownloadQueueItem AcquireImageDownloadSlot(HttpListenerRequest request, string path)
     {
         bool removedFromWaiting = false;
-        int waiting = Interlocked.Increment(ref this.imageDownloadsWaiting);
+        ImageDownloadQueueItem item = CreateImageDownloadQueueItem(request, path);
+
+        Interlocked.Increment(ref this.imageDownloadsWaiting);
         Interlocked.Increment(ref this.imageDownloadRequestsTotal);
-        UpdatePeak(ref this.imageDownloadsPeakWaiting, waiting);
+
+        lock (this.imageQueueLock)
+        {
+            this.imageQueueItems[item.id] = item;
+        }
 
         try
         {
@@ -1160,9 +1195,14 @@ public sealed class SafetyWallpaperStaticServerRuntime
             Interlocked.Decrement(ref this.imageDownloadsWaiting);
             removedFromWaiting = true;
 
-            int active = Interlocked.Increment(ref this.imageDownloadsActive);
-            UpdatePeak(ref this.imageDownloadsPeakActive, active);
-            return true;
+            lock (this.imageQueueLock)
+            {
+                item.status = "downloading";
+                item.startedAt = DateTime.Now;
+            }
+
+            Interlocked.Increment(ref this.imageDownloadsActive);
+            return item;
         }
         catch
         {
@@ -1171,21 +1211,126 @@ public sealed class SafetyWallpaperStaticServerRuntime
                 Interlocked.Decrement(ref this.imageDownloadsWaiting);
             }
 
+            lock (this.imageQueueLock)
+            {
+                this.imageQueueItems.Remove(item.id);
+            }
+
             throw;
         }
     }
 
-    private static void UpdatePeak(ref int target, int value)
+    private void CompleteImageDownloadSlot(ImageDownloadQueueItem item)
     {
-        int current;
-
-        while (value > (current = Volatile.Read(ref target)))
+        try
         {
-            if (Interlocked.CompareExchange(ref target, value, current) == current)
+            Interlocked.Decrement(ref this.imageDownloadsActive);
+            Interlocked.Increment(ref this.imageDownloadsCompletedTotal);
+
+            if (item != null)
             {
-                return;
+                lock (this.imageQueueLock)
+                {
+                    item.status = "completed";
+                    item.completedAt = DateTime.Now;
+
+                    if (item.startedAt != DateTime.MinValue)
+                    {
+                        item.durationMilliseconds = Math.Max(0, (long)(item.completedAt - item.startedAt).TotalMilliseconds);
+                    }
+
+                    this.imageQueueItems.Remove(item.id);
+                    this.imageCompletedItems.Insert(0, item);
+
+                    while (this.imageCompletedItems.Count > CompletedImageHistoryLimit)
+                    {
+                        this.imageCompletedItems.RemoveAt(this.imageCompletedItems.Count - 1);
+                    }
+                }
             }
         }
+        finally
+        {
+            this.imageSemaphore.Release();
+        }
+    }
+
+    private ImageDownloadQueueItem CreateImageDownloadQueueItem(HttpListenerRequest request, string path)
+    {
+        ImageDownloadQueueItem item = new ImageDownloadQueueItem();
+        item.id = Interlocked.Increment(ref this.imageDownloadRequestSequence);
+        item.ip = GetClientIp(request);
+        item.computer = FirstNonEmpty(request.Headers["X-Safety-Wallpaper-Computer"], "");
+        item.user = FirstNonEmpty(request.Headers["X-Safety-Wallpaper-User"], "");
+        item.path = path;
+        item.agent = FirstNonEmpty(request.Headers["X-Safety-Wallpaper-Agent"], "");
+        item.userAgent = FirstNonEmpty(request.UserAgent, "");
+        item.status = "waiting";
+        item.requestedAt = DateTime.Now;
+        item.startedAt = DateTime.MinValue;
+        item.completedAt = DateTime.MinValue;
+        item.durationMilliseconds = 0;
+        return item;
+    }
+
+    private void AppendQueueItemsByStatus(StringBuilder builder, string status)
+    {
+        bool first = true;
+
+        foreach (KeyValuePair<long, ImageDownloadQueueItem> pair in this.imageQueueItems)
+        {
+            if (!String.Equals(pair.Value.status, status, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!first)
+            {
+                builder.Append(",");
+            }
+
+            first = false;
+            AppendQueueItemJson(builder, pair.Value);
+        }
+    }
+
+    private void AppendCompletedQueueItems(StringBuilder builder)
+    {
+        bool first = true;
+
+        foreach (ImageDownloadQueueItem item in this.imageCompletedItems)
+        {
+            if (!first)
+            {
+                builder.Append(",");
+            }
+
+            first = false;
+            AppendQueueItemJson(builder, item);
+        }
+    }
+
+    private static void AppendQueueItemJson(StringBuilder builder, ImageDownloadQueueItem item)
+    {
+        builder.Append("{");
+        builder.Append("\"id\":").Append(item.id).Append(",");
+        builder.Append("\"ip\":\"").Append(EscapeJson(item.ip)).Append("\",");
+        builder.Append("\"computer\":\"").Append(EscapeJson(item.computer)).Append("\",");
+        builder.Append("\"user\":\"").Append(EscapeJson(item.user)).Append("\",");
+        builder.Append("\"path\":\"").Append(EscapeJson(item.path)).Append("\",");
+        builder.Append("\"agent\":\"").Append(EscapeJson(item.agent)).Append("\",");
+        builder.Append("\"userAgent\":\"").Append(EscapeJson(item.userAgent)).Append("\",");
+        builder.Append("\"status\":\"").Append(EscapeJson(item.status)).Append("\",");
+        builder.Append("\"requestedAt\":\"").Append(EscapeJson(FormatQueueTime(item.requestedAt))).Append("\",");
+        builder.Append("\"startedAt\":\"").Append(EscapeJson(FormatQueueTime(item.startedAt))).Append("\",");
+        builder.Append("\"completedAt\":\"").Append(EscapeJson(FormatQueueTime(item.completedAt))).Append("\",");
+        builder.Append("\"durationMilliseconds\":").Append(item.durationMilliseconds);
+        builder.Append("}");
+    }
+
+    private static string FormatQueueTime(DateTime value)
+    {
+        return value == DateTime.MinValue ? "" : value.ToString("yyyy-MM-dd HH:mm:ss");
     }
 
     private static string GetCookie(HttpListenerRequest request, string name)
@@ -1214,6 +1359,8 @@ public sealed class SafetyWallpaperStaticServerRuntime
     {
         string ip = GetClientIp(request);
         string agent = FirstNonEmpty(request.Headers["X-Safety-Wallpaper-Agent"], "");
+        string computer = FirstNonEmpty(request.Headers["X-Safety-Wallpaper-Computer"], "");
+        string user = FirstNonEmpty(request.Headers["X-Safety-Wallpaper-User"], "");
         string userAgent = FirstNonEmpty(request.UserAgent, "");
         string line = "{\"time\":\"" + EscapeJson(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")) + "\"," +
                       "\"ip\":\"" + EscapeJson(ip) + "\"," +
@@ -1221,6 +1368,8 @@ public sealed class SafetyWallpaperStaticServerRuntime
                       "\"action\":\"" + EscapeJson(action) + "\"," +
                       "\"detail\":\"" + EscapeJson(detail) + "\"," +
                       "\"agent\":\"" + EscapeJson(agent) + "\"," +
+                      "\"computer\":\"" + EscapeJson(computer) + "\"," +
+                      "\"user\":\"" + EscapeJson(user) + "\"," +
                       "\"userAgent\":\"" + EscapeJson(userAgent) + "\"}";
 
         lock (this.logLock)

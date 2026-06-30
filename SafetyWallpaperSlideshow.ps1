@@ -246,6 +246,8 @@ function Get-FileSha256 {
 function Get-AgentRequestHeaders {
     return @{
         'X-Safety-Wallpaper-Agent' = 'SafetyWallpaperSlideshow'
+        'X-Safety-Wallpaper-Computer' = [string]$env:COMPUTERNAME
+        'X-Safety-Wallpaper-User' = ('{0}\{1}' -f $env:USERDOMAIN, $env:USERNAME).Trim('\')
     }
 }
 

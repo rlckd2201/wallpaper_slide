@@ -995,6 +995,27 @@
     async function loadQueueStatus() {
       const res = await apiFetch(`${API}/queue-status`, { cache: 'no-store' });
       const data = await res.json();
+      const renderLiveRows = items => (items || []).map(item => `
+        <tr>
+          <td>${escapeHtml(item.ip || '-')}</td>
+          <td>${escapeHtml(item.computer || '-')}</td>
+          <td>${escapeHtml(item.user || '-')}</td>
+          <td>${escapeHtml(item.path || '-')}</td>
+          <td>${escapeHtml(item.requestedAt || '-')}</td>
+          <td>${escapeHtml(item.startedAt || '-')}</td>
+        </tr>`).join('');
+      const renderCompletedRows = items => (items || []).map(item => `
+        <tr>
+          <td>${escapeHtml(item.ip || '-')}</td>
+          <td>${escapeHtml(item.computer || '-')}</td>
+          <td>${escapeHtml(item.user || '-')}</td>
+          <td>${escapeHtml(item.path || '-')}</td>
+          <td>${escapeHtml(item.requestedAt || '-')}</td>
+          <td>${escapeHtml(item.startedAt || '-')}</td>
+          <td>${escapeHtml(item.completedAt || '-')}</td>
+          <td>${item.durationMilliseconds || 0}ms</td>
+        </tr>`).join('');
+
       superContent.innerHTML = `
         <div class="toolbar">
           <h2>배포큐상태</h2>
@@ -1006,11 +1027,24 @@
           <div class="status-box"><strong>현재 다운로드 중</strong>${data.activeImageDownloads || 0}명</div>
           <div class="status-box"><strong>현재 대기 중</strong>${data.waitingImageDownloads || 0}명</div>
           <div class="status-box"><strong>남은 슬롯</strong>${data.availableImageSlots || 0}개</div>
-          <div class="status-box"><strong>최고 동시 다운로드</strong>${data.peakActiveImageDownloads || 0}명</div>
-          <div class="status-box"><strong>최고 대기</strong>${data.peakWaitingImageDownloads || 0}명</div>
           <div class="status-box"><strong>누적 이미지 요청</strong>${data.totalImageDownloadRequests || 0}건</div>
           <div class="status-box"><strong>완료 이미지 요청</strong>${data.completedImageDownloads || 0}건</div>
-        </div>`;
+        </div>
+        <h3>현재 다운로드 중</h3>
+        <table>
+          <thead><tr><th>IP</th><th>PC명</th><th>사용자</th><th>요청파일</th><th>요청시간</th><th>시작시간</th></tr></thead>
+          <tbody>${renderLiveRows(data.downloadingItems) || '<tr><td colspan="6">현재 다운로드 중인 요청이 없습니다.</td></tr>'}</tbody>
+        </table>
+        <h3>현재 대기 중</h3>
+        <table>
+          <thead><tr><th>IP</th><th>PC명</th><th>사용자</th><th>요청파일</th><th>요청시간</th><th>시작시간</th></tr></thead>
+          <tbody>${renderLiveRows(data.waitingItems) || '<tr><td colspan="6">현재 대기 중인 요청이 없습니다.</td></tr>'}</tbody>
+        </table>
+        <h3>최근 완료 이력</h3>
+        <table>
+          <thead><tr><th>IP</th><th>PC명</th><th>사용자</th><th>요청파일</th><th>요청시간</th><th>시작시간</th><th>완료시간</th><th>소요</th></tr></thead>
+          <tbody>${renderCompletedRows(data.completedItems) || '<tr><td colspan="8">완료 이력이 없습니다.</td></tr>'}</tbody>
+        </table>`;
     }
 
     async function loadAdminUsers() {

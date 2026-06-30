@@ -37,7 +37,7 @@
 - SMTP settings are read from ignored `server-policy-sample/mail-settings.json`; `mail-settings.sample.json` is only a template.
 - Admin uploads return the saved image URL, and the web page automatically selects newly uploaded images.
 - Server static file service allows up to 5 concurrent image downloads and queues additional image requests.
-- Queue status now separates live image download counts from peak/cumulative counters: current active, current waiting, remaining slots, peak active, peak waiting, total image requests, and completed image requests.
+- Queue status now shows actual image download queue members: currently downloading requests, currently waiting requests, and the latest 200 completed image requests. Each item includes IP, PC name, Windows user, requested file, timestamps, and duration when available.
 - Server now writes employee policy/image receive events to `server-policy-sample/logs/client-download.log` with client IP, action, requested file, agent header, and User-Agent.
 - Super admins can view those receive events in the web admin page under `임직원 수신이력`.
 
@@ -54,7 +54,7 @@
 - It can be distributed as a folder and started by running the start `.bat`.
 - For NAC deployment, distribute two files together: `dist/SafetyWallpaperAgent.zip` and `InstallSafetyWallpaperAgentFromZip.bat`; NAC only needs to execute the BAT after both files exist in the same folder.
 - User PCs are now intended to operate as policy/image listener agents controlled by the central server.
-- Employee agents send `X-Safety-Wallpaper-Agent: SafetyWallpaperSlideshow` when checking policy and downloading images, so server receive logs can distinguish the agent from browser thumbnail requests.
+- Employee agents send `X-Safety-Wallpaper-Agent`, `X-Safety-Wallpaper-Computer`, and `X-Safety-Wallpaper-User` when checking policy and downloading images, so server receive/queue logs can identify IP, PC, and logged-on user.
 - Employee PCs have a tray icon for status, log opening, policy URL opening, and manual policy refresh.
 - Tray menu text is generated from Unicode code points in `SafetyWallpaperTray.ps1` so Windows PowerShell 5.1 cannot corrupt Korean menu labels when reading UTF-8 files without BOM.
 - Admin image uploads now send the original browser filename through `X-File-Name-Base64`, and the server decodes it as UTF-8 before saving. This prevents Korean upload filenames from being corrupted on future uploads.
