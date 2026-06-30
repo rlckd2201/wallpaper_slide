@@ -153,3 +153,10 @@
 - Verified NAC-style same-folder ZIP auto-detection with `/no-start` into a temp folder.
 - Rechecked packaged PowerShell scripts: `AGENT_PARSE_OK`, `TRAY_PARSE_OK`.
 - `graphify update .` succeeded after adding NAC ZIP bootstrap packaging: 56 nodes, 99 edges, 12 communities.
+- User questioned whether `배포큐상태` could be trusted because live waiting count changed from 99 to 1/3/0 between refreshes.
+- Root cause/interpretation: the existing queue status was a live snapshot, and image requests can spike when many clients or admin browser thumbnails request images simultaneously. The UI did not distinguish live count from peak/cumulative values.
+- Changed image queue counters to track current active, current waiting, peak active, peak waiting, total image requests, and completed image requests.
+- Made waiting counter decrement robust if semaphore acquisition throws before a slot is acquired.
+- Updated the super admin queue UI labels to show `현재 대기 중`, `최고 대기`, `누적 이미지 요청`, and `완료 이미지 요청` separately.
+- Rechecked queue status parser and server compile path: `STATIC_SERVER_PARSE_OK`, `COMPILE_OK_URLACL_REQUIRED`.
+- `git diff --check` passed; only CRLF conversion warnings were reported.

@@ -31,6 +31,7 @@
 - Web admin uploads send Korean filenames as a UTF-8 Base64 HTTP header instead of a URL query parameter to avoid `HttpListener` query-string decoding corruption.
 - Web admin image deletion removes the physical image file and automatically removes matching slide references from `policy.json`.
 - Server static file service limits concurrent image downloads to 5; policy JSON requests are not throttled.
+- Treat queue status as a live snapshot. Show peak and cumulative counters separately so transient bursts like `waiting=99` are understandable and not mistaken for a durable backlog.
 - Log employee-facing policy and image GET requests to `logs/client-download.log`; super admins can inspect the last 200 records from the web UI.
 - Add `X-Safety-Wallpaper-Agent: SafetyWallpaperSlideshow` to employee agent HTTP requests to distinguish agent traffic from administrator browser thumbnail traffic.
 - Uploaded image requests return the saved `images/...` URL so the web page can select the actual stored file.

@@ -37,6 +37,7 @@
 - SMTP settings are read from ignored `server-policy-sample/mail-settings.json`; `mail-settings.sample.json` is only a template.
 - Admin uploads return the saved image URL, and the web page automatically selects newly uploaded images.
 - Server static file service allows up to 5 concurrent image downloads and queues additional image requests.
+- Queue status now separates live image download counts from peak/cumulative counters: current active, current waiting, remaining slots, peak active, peak waiting, total image requests, and completed image requests.
 - Server now writes employee policy/image receive events to `server-policy-sample/logs/client-download.log` with client IP, action, requested file, agent header, and User-Agent.
 - Super admins can view those receive events in the web admin page under `임직원 수신이력`.
 

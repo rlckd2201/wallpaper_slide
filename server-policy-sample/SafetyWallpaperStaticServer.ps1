@@ -112,6 +112,10 @@ public sealed class SafetyWallpaperStaticServerRuntime
     private readonly Dictionary<string, AdminSessionRecord> sessions = new Dictionary<string, AdminSessionRecord>(StringComparer.Ordinal);
     private int imageDownloadsActive = 0;
     private int imageDownloadsWaiting = 0;
+    private int imageDownloadsPeakActive = 0;
+    private int imageDownloadsPeakWaiting = 0;
+    private long imageDownloadRequestsTotal = 0;
+    private long imageDownloadsCompletedTotal = 0;
 
     public SafetyWallpaperStaticServerRuntime(string rootPath, int port, int maxImageDownloads)
     {
@@ -355,11 +359,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
 
             if (isImage)
             {
-                Interlocked.Increment(ref this.imageDownloadsWaiting);
-                this.imageSemaphore.Wait();
-                Interlocked.Decrement(ref this.imageDownloadsWaiting);
-                Interlocked.Increment(ref this.imageDownloadsActive);
-                imageSlotAcquired = true;
+                imageSlotAcquired = AcquireImageDownloadSlot();
             }
 
             SendFile(context.Response, fullPath);
@@ -379,6 +379,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
             if (imageSlotAcquired)
             {
                 Interlocked.Decrement(ref this.imageDownloadsActive);
+                Interlocked.Increment(ref this.imageDownloadsCompletedTotal);
                 this.imageSemaphore.Release();
             }
 
@@ -1130,11 +1131,61 @@ public sealed class SafetyWallpaperStaticServerRuntime
     {
         int active = Math.Max(0, Volatile.Read(ref this.imageDownloadsActive));
         int waiting = Math.Max(0, Volatile.Read(ref this.imageDownloadsWaiting));
+        int peakActive = Math.Max(0, Volatile.Read(ref this.imageDownloadsPeakActive));
+        int peakWaiting = Math.Max(0, Volatile.Read(ref this.imageDownloadsPeakWaiting));
+        long totalRequests = Math.Max(0, Interlocked.Read(ref this.imageDownloadRequestsTotal));
+        long totalCompleted = Math.Max(0, Interlocked.Read(ref this.imageDownloadsCompletedTotal));
 
-        return "{\"maxImageDownloads\":" + this.maxImageDownloads + "," +
+        return "{\"serverTime\":\"" + EscapeJson(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")) + "\"," +
+               "\"maxImageDownloads\":" + this.maxImageDownloads + "," +
                "\"activeImageDownloads\":" + active + "," +
                "\"waitingImageDownloads\":" + waiting + "," +
-               "\"availableImageSlots\":" + Math.Max(0, this.maxImageDownloads - active) + "}";
+               "\"availableImageSlots\":" + Math.Max(0, this.maxImageDownloads - active) + "," +
+               "\"peakActiveImageDownloads\":" + peakActive + "," +
+               "\"peakWaitingImageDownloads\":" + peakWaiting + "," +
+               "\"totalImageDownloadRequests\":" + totalRequests + "," +
+               "\"completedImageDownloads\":" + totalCompleted + "}";
+    }
+
+    private bool AcquireImageDownloadSlot()
+    {
+        bool removedFromWaiting = false;
+        int waiting = Interlocked.Increment(ref this.imageDownloadsWaiting);
+        Interlocked.Increment(ref this.imageDownloadRequestsTotal);
+        UpdatePeak(ref this.imageDownloadsPeakWaiting, waiting);
+
+        try
+        {
+            this.imageSemaphore.Wait();
+            Interlocked.Decrement(ref this.imageDownloadsWaiting);
+            removedFromWaiting = true;
+
+            int active = Interlocked.Increment(ref this.imageDownloadsActive);
+            UpdatePeak(ref this.imageDownloadsPeakActive, active);
+            return true;
+        }
+        catch
+        {
+            if (!removedFromWaiting)
+            {
+                Interlocked.Decrement(ref this.imageDownloadsWaiting);
+            }
+
+            throw;
+        }
+    }
+
+    private static void UpdatePeak(ref int target, int value)
+    {
+        int current;
+
+        while (value > (current = Volatile.Read(ref target)))
+        {
+            if (Interlocked.CompareExchange(ref target, value, current) == current)
+            {
+                return;
+            }
+        }
     }
 
     private static string GetCookie(HttpListenerRequest request, string name)

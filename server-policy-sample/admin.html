@@ -1001,10 +1001,15 @@
           <button type="button" onclick="loadSuperTab('queue')">새로고침</button>
         </div>
         <div class="status-grid">
-          <div class="status-box"><strong>최대 동시 이미지 다운로드</strong>${data.maxImageDownloads}명</div>
-          <div class="status-box"><strong>현재 다운로드 중</strong>${data.activeImageDownloads}명</div>
-          <div class="status-box"><strong>대기 중</strong>${data.waitingImageDownloads}명</div>
-          <div class="status-box"><strong>남은 슬롯</strong>${data.availableImageSlots}개</div>
+          <div class="status-box"><strong>기준 시간</strong>${escapeHtml(data.serverTime || '-')}</div>
+          <div class="status-box"><strong>최대 동시 이미지 다운로드</strong>${data.maxImageDownloads || 0}명</div>
+          <div class="status-box"><strong>현재 다운로드 중</strong>${data.activeImageDownloads || 0}명</div>
+          <div class="status-box"><strong>현재 대기 중</strong>${data.waitingImageDownloads || 0}명</div>
+          <div class="status-box"><strong>남은 슬롯</strong>${data.availableImageSlots || 0}개</div>
+          <div class="status-box"><strong>최고 동시 다운로드</strong>${data.peakActiveImageDownloads || 0}명</div>
+          <div class="status-box"><strong>최고 대기</strong>${data.peakWaitingImageDownloads || 0}명</div>
+          <div class="status-box"><strong>누적 이미지 요청</strong>${data.totalImageDownloadRequests || 0}건</div>
+          <div class="status-box"><strong>완료 이미지 요청</strong>${data.completedImageDownloads || 0}건</div>
         </div>`;
     }
 
