@@ -21,6 +21,6 @@
 
 ## Open Questions
 - Configure the server on `172.16.19.35:28080` to serve `/safety-wallpaper/policy.json` and `/safety-wallpaper/images/`.
-- Push project files to `https://github.com/rlckd2201/wallpaper_slide.git`.
+- Server can now clone `https://github.com/rlckd2201/wallpaper_slide.git`.
 - Should users be allowed to close/pause the slide show?
 - Which Windows versions must be supported?

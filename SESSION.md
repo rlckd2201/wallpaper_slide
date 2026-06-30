@@ -35,4 +35,4 @@
 - It can be distributed as a folder and started by running the start `.bat`.
 - User PCs are now intended to operate as policy/image listener agents controlled by the central server.
 - The hidden background agent was restarted after the slide cycle update.
-- Current local workspace is not a git repository, so the actual server clone command still needs the real remote URL.
+- Local workspace was initialized as a git repository and pushed to `https://github.com/rlckd2201/wallpaper_slide.git` on branch `main`.
