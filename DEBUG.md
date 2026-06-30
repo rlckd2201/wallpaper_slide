@@ -64,3 +64,8 @@
 - Added employee tray controller `SafetyWallpaperTray.ps1`.
 - Updated `RunSafetyWallpaperSlideshowHidden.vbs` to launch both the hidden agent and tray icon.
 - Added `.runtime/refresh.signal`; the agent now wakes from responsive sleep and forces policy sync when the tray refresh command is clicked.
+- Replaced the PowerShell-only static server loop with a C# `HttpListener` runtime that handles requests concurrently.
+- Added `SemaphoreSlim(5)` throttling for image files only; policy JSON stays unthrottled.
+- Static server PowerShell parser check passed.
+- C# `Add-Type` compile path passed; local run stopped at expected `HttpListener` URL ACL permission without admin rights.
+- `graphify update .` refused to overwrite because the C# server rewrite reduced node count from 56 to 54; CLI `--force` did not override it.

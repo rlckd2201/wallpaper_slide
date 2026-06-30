@@ -15,6 +15,7 @@
 - 이미지와 캠페인 정책은 서버 관리자 GUI에서 관리합니다.
 - 서버 관리자 GUI: `server-policy-sample/StartSafetyWallpaperAdminGui.bat`
 - 서버에서 바로 띄울 때: `server-policy-sample/StartSafetyWallpaperServer.bat`
+- 서버 이미지 다운로드 동시 처리: 최대 5개, 초과 요청은 대기
 - 서버에서 git으로 받을 때: `server-policy-sample/InstallOrUpdateSafetyWallpaperServerFromGit.bat`
 
 ## 동작 규칙

@@ -81,6 +81,8 @@ Agent behavior:
 - Default poll interval is 600 seconds, which is 10 minutes.
 - Image URLs may be relative to `policy.json`, absolute HTTP URLs, file paths, or UNC paths.
 - The agent downloads images into `.runtime/policy-cache/images`.
+- The server allows up to 5 concurrent image downloads; additional image requests wait in a queue.
+- Policy JSON requests are not counted as image downloads and continue to respond immediately.
 - If the server is temporarily unavailable, the agent keeps using the last cached policy and images.
 - If no valid policy or image cache exists, the agent applies a plain black wallpaper.
 

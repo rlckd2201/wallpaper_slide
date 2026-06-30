@@ -5,6 +5,7 @@ set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 if "%ROOT:~-1%"==":" set "ROOT=%ROOT%\"
 set "PORT=28080"
+set "MAX_IMAGE_DOWNLOADS=5"
 set "PREFIX=http://+:%PORT%/"
 set "FIREWALL_RULE=Safety Wallpaper Server 28080"
 
@@ -37,9 +38,10 @@ if errorlevel 1 (
 
 echo Safety wallpaper server starting on port %PORT%.
 echo Policy URL: http://172.16.19.35:%PORT%/safety-wallpaper/policy.json
+echo Max image downloads: %MAX_IMAGE_DOWNLOADS%
 echo Press Ctrl+C to stop.
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\SafetyWallpaperStaticServer.ps1" -Root "%ROOT%" -Port %PORT%
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\SafetyWallpaperStaticServer.ps1" -Root "%ROOT%" -Port %PORT% -MaxImageDownloads %MAX_IMAGE_DOWNLOADS%
 
 endlocal
 exit /b 0

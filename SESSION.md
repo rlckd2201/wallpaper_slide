@@ -24,6 +24,7 @@
 - `graphify` is installed and available.
 - Server-side git install/update batches are available under `server-policy-sample`.
 - Server-side administrator GUI is available as `server-policy-sample/StartSafetyWallpaperAdminGui.bat`.
+- Server static file service allows up to 5 concurrent image downloads and queues additional image requests.
 
 ### Next Session Start Checklist
 - Read `SESSION.md`, `TODO.md`, `DECISIONS.md`, and `DEBUG.md`.

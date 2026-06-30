@@ -18,6 +18,7 @@
 - [x] Add simple server-side batch and PowerShell static server for `172.16.19.35:28080`.
 - [x] Add server-side git clone/pull install/update batches.
 - [x] Add server-side administrator GUI for image upload, selection, posting period, and slide policy management.
+- [x] Limit server image download concurrency to 5 and queue additional image requests.
 - Add installer/update strategy and uninstall behavior.
 - Add tests or manual verification checklist for image change, date expiry, startup, and black background fallback.
 

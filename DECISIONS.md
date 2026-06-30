@@ -16,6 +16,7 @@
 - `StartSafetyWallpaperSlideshow.bat` registers a current-user startup entry and launches the agent through hidden VBS.
 - Employee startup launches both the hidden wallpaper agent and a tray controller.
 - Tray `정책 새로고침` writes `.runtime/refresh.signal`; the agent detects it and syncs policy immediately.
+- Server static file service limits concurrent image downloads to 5; policy JSON requests are not throttled.
 
 ## Pending
 - Whether production startup registration should use HKCU Run, HKLM Run, or Task Scheduler under NAC.
