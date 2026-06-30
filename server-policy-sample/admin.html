@@ -102,6 +102,11 @@
       font-size: 15px;
     }
 
+    .auth-form button.secondary {
+      background: #e2e8f0;
+      color: #102033;
+    }
+
     .auth-message {
       min-height: 20px;
       color: var(--red);
@@ -350,6 +355,7 @@
             <input id="loginPassword" type="password" autocomplete="current-password">
           </label>
           <button type="submit">로그인</button>
+          <button id="forgotPasswordBtn" class="secondary" type="button">비밀번호 찾기</button>
         </form>
       </div>
       <div id="changePanel" hidden>
@@ -533,6 +539,10 @@
         if (data.message === 'current_password_invalid') return '현재 비밀번호가 맞지 않습니다.';
         if (data.message === 'weak_password') return '새 비밀번호는 8자 이상이어야 합니다.';
         if (data.message === 'same_password') return '새 비밀번호는 현재 비밀번호와 달라야 합니다.';
+        if (data.message === 'account_not_found') return '계정을 찾을 수 없습니다.';
+        if (data.message === 'email_missing') return '등록된 이메일이 없습니다.';
+        if (data.message === 'mail_settings_missing') return '서버 메일 설정이 아직 없습니다.';
+        if (data.message === 'mail_send_failed') return '메일 발송에 실패했습니다. 기존 비밀번호는 유지됩니다.';
       } catch {
       }
 
@@ -776,6 +786,33 @@
     document.getElementById('applyBtn').addEventListener('click', async () => {
       try { await applyPolicy(); }
       catch (error) { setMessage(error.message); alert(error.message); }
+    });
+
+    document.getElementById('forgotPasswordBtn').addEventListener('click', async () => {
+      setAuthMessage('');
+
+      const user_id = document.getElementById('loginId').value.trim();
+
+      if (!user_id) {
+        setAuthMessage('아이디를 먼저 입력하세요.');
+        document.getElementById('loginId').focus();
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API}/forgot-password`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          body: JSON.stringify({ user_id })
+        });
+
+        if (!res.ok) throw new Error(await readErrorMessage(res, '비밀번호 찾기 실패'));
+        document.getElementById('loginPassword').value = '';
+        setAuthMessage('등록된 이메일로 임시 비밀번호를 발송했습니다.');
+      } catch (error) {
+        setAuthMessage(error.message);
+      }
     });
 
     document.getElementById('loginForm').addEventListener('submit', async event => {

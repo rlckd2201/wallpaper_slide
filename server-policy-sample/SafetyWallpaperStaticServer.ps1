@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -31,6 +32,7 @@ public sealed class AdminUserRecord
     public string title { get; set; }
     public string email { get; set; }
     public bool enabled { get; set; }
+    public bool? active { get; set; }
     public bool mustChangePassword { get; set; }
     public string passwordHash { get; set; }
     public string lastPasswordChange { get; set; }
@@ -55,6 +57,25 @@ public sealed class ChangePasswordRequest
     public string newPassword { get; set; }
 }
 
+public sealed class ForgotPasswordRequest
+{
+    public string user_id { get; set; }
+    public string userId { get; set; }
+    public string id { get; set; }
+}
+
+public sealed class MailSettings
+{
+    public string host { get; set; }
+    public int port { get; set; }
+    public bool enableSsl { get; set; }
+    public string username { get; set; }
+    public string password { get; set; }
+    public string fromEmail { get; set; }
+    public string fromName { get; set; }
+    public int timeoutMilliseconds { get; set; }
+}
+
 public sealed class SafetyWallpaperStaticServerRuntime
 {
     private const string SessionCookieName = "SafetyWallpaperAdminSession";
@@ -63,6 +84,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
     private readonly string imagesPath;
     private readonly string adminUsersPath;
     private readonly string adminUsersTemplatePath;
+    private readonly string mailSettingsPath;
     private readonly int port;
     private readonly int maxImageDownloads;
     private readonly SemaphoreSlim imageSemaphore;
@@ -78,6 +100,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
         this.imagesPath = Path.Combine(this.rootPath, "images");
         this.adminUsersPath = Path.Combine(this.rootPath, "admin-users.json");
         this.adminUsersTemplatePath = Path.Combine(this.rootPath, "admin-users.sample.json");
+        this.mailSettingsPath = Path.Combine(this.rootPath, "mail-settings.json");
         this.port = port;
         this.maxImageDownloads = Math.Max(1, maxImageDownloads);
         this.imageSemaphore = new SemaphoreSlim(this.maxImageDownloads, this.maxImageDownloads);
@@ -147,6 +170,12 @@ public sealed class SafetyWallpaperStaticServerRuntime
             if (method == "POST" && route == "api/logout")
             {
                 HandleLogout(context);
+                return;
+            }
+
+            if (method == "POST" && (route == "api/forgot-password" || route == "api/auth/forgot-password"))
+            {
+                HandleForgotPassword(context);
                 return;
             }
 
@@ -332,7 +361,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
             this.adminUsers.TryGetValue(userId, out user);
         }
 
-        if (user == null || !user.enabled || !VerifyPassword(password, user.passwordHash))
+        if (user == null || !IsUserActive(user) || !VerifyPassword(password, user.passwordHash))
         {
             SendJson(context.Response, 401, "{\"ok\":false,\"message\":\"invalid_login\"}");
             return;
@@ -359,6 +388,92 @@ public sealed class SafetyWallpaperStaticServerRuntime
         SendJson(context.Response, "{\"ok\":true}");
     }
 
+    private void HandleForgotPassword(HttpListenerContext context)
+    {
+        ForgotPasswordRequest request = ReadJsonBody<ForgotPasswordRequest>(context.Request);
+        string userId = NormalizeAdminId(FirstNonEmpty(
+            request == null ? null : request.user_id,
+            request == null ? null : request.userId,
+            request == null ? null : request.id));
+
+        AdminUserRecord user = null;
+
+        lock (this.authLock)
+        {
+            this.adminUsers.TryGetValue(userId, out user);
+        }
+
+        if (user == null || !IsUserActive(user))
+        {
+            SendJson(context.Response, 404, "{\"ok\":false,\"message\":\"account_not_found\"}");
+            return;
+        }
+
+        if (String.IsNullOrWhiteSpace(user.email))
+        {
+            SendJson(context.Response, 400, "{\"ok\":false,\"message\":\"email_missing\"}");
+            return;
+        }
+
+        MailSettings mailSettings;
+
+        try
+        {
+            mailSettings = LoadMailSettings();
+        }
+        catch
+        {
+            SendJson(context.Response, 500, "{\"ok\":false,\"message\":\"mail_settings_missing\"}");
+            return;
+        }
+
+        string temporaryPassword = MakeTemporaryPassword(12);
+        string oldHash;
+        bool oldMustChangePassword;
+        string oldLastPasswordChange;
+
+        lock (this.authLock)
+        {
+            if (!this.adminUsers.TryGetValue(userId, out user) || user == null || !IsUserActive(user))
+            {
+                SendJson(context.Response, 404, "{\"ok\":false,\"message\":\"account_not_found\"}");
+                return;
+            }
+
+            oldHash = user.passwordHash;
+            oldMustChangePassword = user.mustChangePassword;
+            oldLastPasswordChange = user.lastPasswordChange;
+
+            user.passwordHash = HashPassword(temporaryPassword);
+            user.mustChangePassword = true;
+            user.lastPasswordChange = "";
+            SaveAdminUsersLocked();
+        }
+
+        try
+        {
+            SendPasswordResetMail(mailSettings, user.email, user.id, temporaryPassword);
+            SendJson(context.Response, "{\"ok\":true}");
+        }
+        catch
+        {
+            lock (this.authLock)
+            {
+                AdminUserRecord rollbackUser;
+
+                if (this.adminUsers.TryGetValue(userId, out rollbackUser) && rollbackUser != null)
+                {
+                    rollbackUser.passwordHash = oldHash;
+                    rollbackUser.mustChangePassword = oldMustChangePassword;
+                    rollbackUser.lastPasswordChange = oldLastPasswordChange;
+                    SaveAdminUsersLocked();
+                }
+            }
+
+            SendJson(context.Response, 500, "{\"ok\":false,\"message\":\"mail_send_failed\"}");
+        }
+    }
+
     private void HandleChangePassword(HttpListenerContext context)
     {
         AdminSessionRecord session = GetCurrentSession(context.Request);
@@ -377,7 +492,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
         {
             AdminUserRecord user;
 
-            if (!this.adminUsers.TryGetValue(NormalizeAdminId(session.UserId), out user) || user == null || !user.enabled)
+            if (!this.adminUsers.TryGetValue(NormalizeAdminId(session.UserId), out user) || user == null || !IsUserActive(user))
             {
                 SendJson(context.Response, 401, "{\"ok\":false,\"message\":\"login_required\"}");
                 return;
@@ -435,7 +550,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
         {
             AdminUserRecord user;
 
-            if (this.adminUsers.TryGetValue(NormalizeAdminId(session.UserId), out user) && user != null && user.enabled)
+            if (this.adminUsers.TryGetValue(NormalizeAdminId(session.UserId), out user) && user != null && IsUserActive(user))
             {
                 return user;
             }
@@ -512,6 +627,74 @@ public sealed class SafetyWallpaperStaticServerRuntime
         }
     }
 
+    private MailSettings LoadMailSettings()
+    {
+        if (!File.Exists(this.mailSettingsPath))
+        {
+            throw new FileNotFoundException("mail-settings.json is missing.", this.mailSettingsPath);
+        }
+
+        string text = File.ReadAllText(this.mailSettingsPath, Encoding.UTF8);
+        JavaScriptSerializer serializer = new JavaScriptSerializer();
+        MailSettings settings = serializer.Deserialize<MailSettings>(text);
+
+        if (settings == null ||
+            String.IsNullOrWhiteSpace(settings.host) ||
+            String.IsNullOrWhiteSpace(settings.fromEmail))
+        {
+            throw new InvalidOperationException("mail-settings.json host/fromEmail is missing.");
+        }
+
+        if (settings.port <= 0)
+        {
+            settings.port = 25;
+        }
+
+        if (settings.timeoutMilliseconds <= 0)
+        {
+            settings.timeoutMilliseconds = 15000;
+        }
+
+        return settings;
+    }
+
+    private static void SendPasswordResetMail(MailSettings settings, string email, string userId, string temporaryPassword)
+    {
+        string fromName = String.IsNullOrWhiteSpace(settings.fromName) ? settings.fromEmail : settings.fromName;
+
+        using (MailMessage message = new MailMessage())
+        {
+            message.From = new MailAddress(settings.fromEmail, fromName, Encoding.UTF8);
+            message.To.Add(new MailAddress(email));
+            message.Subject = "\uc548\uc804 \ubc30\uacbd\ud654\uba74 \uad00\ub9ac\uc790 \uc784\uc2dc \ube44\ubc00\ubc88\ud638";
+            message.SubjectEncoding = Encoding.UTF8;
+            message.Body = BuildPasswordResetMailBody(userId, temporaryPassword);
+            message.BodyEncoding = Encoding.UTF8;
+
+            using (SmtpClient client = new SmtpClient(settings.host, settings.port))
+            {
+                client.EnableSsl = settings.enableSsl;
+                client.Timeout = settings.timeoutMilliseconds;
+
+                if (!String.IsNullOrWhiteSpace(settings.username))
+                {
+                    client.Credentials = new NetworkCredential(settings.username, settings.password == null ? "" : settings.password);
+                }
+
+                client.Send(message);
+            }
+        }
+    }
+
+    private static string BuildPasswordResetMailBody(string userId, string temporaryPassword)
+    {
+        return userId + " \uacc4\uc815\uc758 \uc784\uc2dc \ube44\ubc00\ubc88\ud638\uac00 \ubc1c\uae09\ub418\uc5c8\uc2b5\ub2c8\ub2e4." + Environment.NewLine +
+               Environment.NewLine +
+               "\uc784\uc2dc \ube44\ubc00\ubc88\ud638: " + temporaryPassword + Environment.NewLine +
+               Environment.NewLine +
+               "\ub85c\uadf8\uc778 \ud6c4 \ubc18\ub4dc\uc2dc \uc0c8 \ube44\ubc00\ubc88\ud638\ub85c \ubcc0\uacbd\ud574 \uc8fc\uc138\uc694.";
+    }
+
     private static string BuildSessionJson(AdminUserRecord user)
     {
         return "{\"authenticated\":true,\"mustChangePassword\":" + JsonBool(user.mustChangePassword) + ",\"user\":" + BuildUserJson(user) + "}";
@@ -564,9 +747,62 @@ public sealed class SafetyWallpaperStaticServerRuntime
         return result;
     }
 
+    private static string FirstNonEmpty(params string[] values)
+    {
+        if (values == null)
+        {
+            return "";
+        }
+
+        foreach (string value in values)
+        {
+            if (!String.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return "";
+    }
+
+    private static bool IsUserActive(AdminUserRecord user)
+    {
+        if (user == null)
+        {
+            return false;
+        }
+
+        return user.active.HasValue ? user.active.Value : user.enabled;
+    }
+
     private static bool IsValidNewPassword(string password)
     {
         return !String.IsNullOrEmpty(password) && password.Length >= 8;
+    }
+
+    private static string MakeTemporaryPassword(int length)
+    {
+        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#";
+
+        if (length <= 0)
+        {
+            length = 12;
+        }
+
+        char[] chars = new char[length];
+        byte[] bytes = new byte[length];
+
+        using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(bytes);
+        }
+
+        for (int i = 0; i < length; i++)
+        {
+            chars[i] = alphabet[bytes[i] % alphabet.Length];
+        }
+
+        return new string(chars);
     }
 
     private static string HashPassword(string password)

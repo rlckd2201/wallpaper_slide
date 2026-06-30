@@ -6,6 +6,7 @@
       "title": "책임매니저",
       "email": "nautes38@dae-seung.co.kr",
       "enabled": true,
+      "active": true,
       "mustChangePassword": true,
       "passwordHash": "pbkdf2-sha1:120000:xsogec07ZS7nLXN1hJNUBQ==:iV5GVfW+leHffUWuzuuZkTQ5Q5Dr2YgWWAAdH6H+t2A=",
       "lastPasswordChange": ""
@@ -16,6 +17,7 @@
       "title": "매니저",
       "email": "gudeh90@dae-seung.co.kr",
       "enabled": true,
+      "active": true,
       "mustChangePassword": true,
       "passwordHash": "pbkdf2-sha1:120000:Sxas9l6sGY+ej895LmHilA==:RcjWE9jpx90NoX5klmPTXArOZ02RZtH2ujTUdOutgXQ=",
       "lastPasswordChange": ""
@@ -26,6 +28,7 @@
       "title": "매니저",
       "email": "qwer0818@dae-seung.co.kr",
       "enabled": true,
+      "active": true,
       "mustChangePassword": true,
       "passwordHash": "pbkdf2-sha1:120000:jRysVCs75O/OLfB5G7P0jA==:lhtzA6IEXm+lZWcAiyemllVSCPG8bX4c5SzqHRGKFZ8=",
       "lastPasswordChange": ""
@@ -36,6 +39,7 @@
       "title": "매니저",
       "email": "dbwldud96@dae-seung.co.kr",
       "enabled": true,
+      "active": true,
       "mustChangePassword": true,
       "passwordHash": "pbkdf2-sha1:120000:sqbFIxwb/1fePEmtjBN/xw==:chcW148Ww20r+ORrvCs1pw+rgXXhs+YKs/zvKw8rk5w=",
       "lastPasswordChange": ""
@@ -46,6 +50,7 @@
       "title": "매니저",
       "email": "kqwer15@dae-seung.co.kr",
       "enabled": true,
+      "active": true,
       "mustChangePassword": true,
       "passwordHash": "pbkdf2-sha1:120000:TC+iabVP89IhWPxL2K3cgA==:pmCsLzT/s3VIbNHz9/fmeekay96mcWE0A+lKee2YAmg=",
       "lastPasswordChange": ""

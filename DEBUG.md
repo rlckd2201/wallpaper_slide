@@ -90,3 +90,14 @@
 - Rechecked `SafetyWallpaperStaticServer.ps1` parser after auth changes: `STATIC_SERVER_PARSE_OK`.
 - Auth server retest result: `COMPILE_OK_URLACL_REQUIRED`, meaning the auth-enabled C# compiled and reached the expected non-elevated URL permission boundary.
 - `graphify update .` was retried after auth changes and still refused to overwrite because the new graph has 54 nodes while the existing graph has 56.
+- Added forgot-password flow: `POST /safety-wallpaper/api/forgot-password` and `POST /safety-wallpaper/api/auth/forgot-password`.
+- Forgot-password validates manual admin account, active/enabled state, and registered email before issuing a temporary password.
+- Temporary password is generated in memory, stored only as PBKDF2 hash, and `mustChangePassword` is set true.
+- SMTP settings are read from ignored `server-policy-sample/mail-settings.json`; sample file added as `mail-settings.sample.json`.
+- If mail settings are missing or mail sending fails, the API does not return the temporary password; on send failure it rolls back the previous password hash.
+- Admin page now has a `비밀번호 찾기` button on the login form.
+- Rechecked parser after forgot-password changes: `STATIC_SERVER_PARSE_OK`.
+- Forgot-password compile retest result: `COMPILE_OK_URLACL_REQUIRED`.
+- Rechecked seeded admin password hashes and `active=true` after adding the `active` field: `ADMIN_HASHES_ACTIVE_OK`.
+- Confirmed `server-policy-sample/admin-users.json` and `server-policy-sample/mail-settings.json` are both ignored by Git.
+- `graphify update .` was retried after forgot-password changes and still refused to overwrite because the new graph has 54 nodes while the existing graph has 56.

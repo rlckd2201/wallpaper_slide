@@ -32,8 +32,19 @@ http://172.16.19.35:28080/safety-wallpaper/admin
 - 환경안전팀 관리자 5명만 로그인할 수 있습니다.
 - 아이디는 메일 주소의 `@` 앞 부분입니다.
 - 첫 로그인 시 초기 비밀번호 변경이 강제됩니다.
+- 비밀번호 찾기는 아이디 입력 후 등록된 이메일로 임시 비밀번호를 발송합니다.
+- 임시 비밀번호도 평문 저장하지 않고 해시만 저장하며, 로그인 후 변경이 강제됩니다.
 - 실제 계정 상태와 변경된 비밀번호 해시는 `admin-users.json`에 저장됩니다.
 - `admin-users.json`은 Git에서 제외되므로 서버에서 바뀐 비밀번호가 `git pull`로 덮이지 않습니다.
+
+비밀번호 찾기 메일을 쓰려면 서버에서 `mail-settings.sample.json`을 복사해 `mail-settings.json`을 만들고 SMTP 정보를 입력하세요.
+
+```bat
+copy mail-settings.sample.json mail-settings.json
+notepad mail-settings.json
+```
+
+`mail-settings.json`은 Git에서 제외됩니다.
 
 관리자가 할 일:
 

@@ -1,0 +1,10 @@
+{
+  "host": "smtp.example.co.kr",
+  "port": 587,
+  "enableSsl": true,
+  "username": "smtp-user",
+  "password": "smtp-password",
+  "fromEmail": "noreply@dae-seung.co.kr",
+  "fromName": "안전 배경화면 관리자",
+  "timeoutMilliseconds": 15000
+}

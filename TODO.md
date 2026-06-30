@@ -21,6 +21,8 @@
 - [x] Limit server image download concurrency to 5 and queue additional image requests.
 - [x] Add web administrator login for environment/safety team accounts.
 - [x] Force seeded administrator accounts to change the initial password on first login.
+- [x] Add password reset flow that emails a temporary password and forces password change.
+- [ ] Confirm real SMTP settings for `server-policy-sample/mail-settings.json` on the server.
 - Add installer/update strategy and uninstall behavior.
 - Add tests or manual verification checklist for image change, date expiry, startup, and black background fallback.
 

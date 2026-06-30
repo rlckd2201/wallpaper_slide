@@ -28,6 +28,8 @@
 - Environment/safety team admin login is now required for web admin API actions.
 - Admin seed users live in `server-policy-sample/admin-users.sample.json`; server first run copies this to ignored `admin-users.json`.
 - Admin passwords are stored as PBKDF2 hashes, and all seeded users must change the initial password on first login.
+- Admin forgot-password flow issues a new temporary password, stores only its PBKDF2 hash, sends the temporary password to the registered email, and forces password change after login.
+- SMTP settings are read from ignored `server-policy-sample/mail-settings.json`; `mail-settings.sample.json` is only a template.
 - Admin uploads return the saved image URL, and the web page automatically selects newly uploaded images.
 - Server static file service allows up to 5 concurrent image downloads and queues additional image requests.
 
