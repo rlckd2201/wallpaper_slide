@@ -30,6 +30,7 @@
 - [x] Add employee policy/image receive history by client IP for super admins.
 - [ ] Confirm real SMTP settings for `server-policy-sample/mail-settings.json` on the server.
 - Add installer/update strategy and uninstall behavior.
+- Fix NAC deployment packaging: either deploy the BAT with required VBS/PS1/config files together, or create a single bootstrap BAT that downloads/installs the employee agent files before registering startup.
 - Add tests or manual verification checklist for image change, date expiry, startup, and black background fallback.
 
 ## Open Questions

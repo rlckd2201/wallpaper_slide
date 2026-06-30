@@ -141,3 +141,7 @@
 - Rechecked server compile/start path after client receive logging: `COMPILE_OK_URLACL_REQUIRED`.
 - `git diff --check` passed; only CRLF conversion warnings were reported.
 - `graphify update .` succeeded after client receive logging: 56 nodes, 99 edges, 12 communities.
+- User asked whether NAC deployment BAT `C:\Program Files\Geni\Genian\Patch\37691D8F825948F57E1A0FA384EF29F077AB1AC9.bat` was deployed correctly.
+- Checked the BAT: it registers HKCU startup to `wscript.exe //B //Nologo "C:\Program Files\Geni\Genian\Patch\RunSafetyWallpaperSlideshowHidden.vbs"` and launches that VBS.
+- Deployment folder is missing `RunSafetyWallpaperSlideshowHidden.vbs`, `SafetyWallpaperSlideshow.ps1`, `SafetyWallpaperTray.ps1`, and `config.json`; therefore this NAC deployment is incomplete.
+- Current running SafetyWallpaper processes are from the local development workspace, not from `C:\Program Files\Geni\Genian\Patch`.
