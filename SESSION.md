@@ -12,6 +12,8 @@
 ### Current Workspace State
 - Initial source files were added.
 - `StartSafetyWallpaperSlideshow.bat` registers current-user startup and launches the hidden wallpaper slideshow process through `RunSafetyWallpaperSlideshowHidden.vbs`.
+- `RunSafetyWallpaperSlideshowHidden.vbs` launches both `SafetyWallpaperSlideshow.ps1` and `SafetyWallpaperTray.ps1`.
+- `SafetyWallpaperTray.ps1` shows the employee tray icon and writes `.runtime/refresh.signal` when the user clicks policy refresh.
 - `StopSafetyWallpaperSlideshow.bat` requests shutdown through `.runtime/stop.signal`.
 - `TestSafetyWallpaperSlideshow.bat` runs one dry-run cycle without changing the real wallpaper.
 - `SafetyWallpaperSlideshow.ps1` reads local bootstrap settings from `config.json`, checks `http://172.16.19.35:28080/safety-wallpaper/policy.json` by default, caches server images, and falls back to a generated black wallpaper.
@@ -35,6 +37,7 @@
 - It does not show an installer UI.
 - It can be distributed as a folder and started by running the start `.bat`.
 - User PCs are now intended to operate as policy/image listener agents controlled by the central server.
+- Employee PCs have a tray icon for status, log opening, policy URL opening, and manual policy refresh.
 - Administrators manage uploads, selected images, posting period, and slide policy through the server GUI.
 - The hidden background agent was restarted after the slide cycle update.
 - Local workspace was initialized as a git repository and pushed to `https://github.com/rlckd2201/wallpaper_slide.git` on branch `main`.

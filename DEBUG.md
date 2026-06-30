@@ -61,3 +61,6 @@
 - User reported server-local URL opens but user PC times out while SYN reaches the server; likely Windows Firewall inbound block for TCP 28080.
 - Added automatic Windows Firewall inbound allow rule creation to `StartSafetyWallpaperServer.bat`.
 - Added `SafetyWallpaperAdminGui.ps1` and `StartSafetyWallpaperAdminGui.bat` for server-side administrator GUI policy management.
+- Added employee tray controller `SafetyWallpaperTray.ps1`.
+- Updated `RunSafetyWallpaperSlideshowHidden.vbs` to launch both the hidden agent and tray icon.
+- Added `.runtime/refresh.signal`; the agent now wakes from responsive sleep and forces policy sync when the tray refresh command is clicked.

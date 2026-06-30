@@ -14,6 +14,7 @@ $RenderedWallpaperDir = Join-Path $RuntimeDir 'rendered'
 $LogDir = Join-Path $ScriptRoot 'logs'
 $LogPath = Join-Path $LogDir 'wallpaper-slideshow.log'
 $StopSignalPath = Join-Path $RuntimeDir 'stop.signal'
+$RefreshSignalPath = Join-Path $RuntimeDir 'refresh.signal'
 $BlackWallpaperPath = Join-Path $RuntimeDir 'black.bmp'
 $MutexName = 'Local\SafetyWallpaperSlideshow'
 
@@ -802,6 +803,28 @@ function Remove-StopSignal {
     }
 }
 
+function Remove-RefreshSignal {
+    if (Test-Path -LiteralPath $RefreshSignalPath -PathType Leaf) {
+        Remove-Item -LiteralPath $RefreshSignalPath -Force
+    }
+}
+
+function Start-ResponsiveSleep {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$Seconds
+    )
+
+    for ($i = 0; $i -lt $Seconds; $i++) {
+        if ((Test-Path -LiteralPath $StopSignalPath -PathType Leaf) -or
+            (Test-Path -LiteralPath $RefreshSignalPath -PathType Leaf)) {
+            return
+        }
+
+        Start-Sleep -Seconds 1
+    }
+}
+
 function Get-LoopSleepSeconds {
     param(
         [Parameter(Mandatory = $true)]
@@ -851,6 +874,12 @@ try {
             Write-Log 'Stop signal detected.'
             Remove-StopSignal
             break
+        }
+
+        if (Test-Path -LiteralPath $RefreshSignalPath -PathType Leaf) {
+            Write-Log 'Manual policy refresh requested from tray.'
+            Remove-RefreshSignal
+            $nextPolicySyncAt = [DateTime]::MinValue
         }
 
         $sleepSeconds = 10
@@ -966,7 +995,7 @@ try {
             break
         }
 
-        Start-Sleep -Seconds $sleepSeconds
+        Start-ResponsiveSleep -Seconds $sleepSeconds
     }
 }
 finally {

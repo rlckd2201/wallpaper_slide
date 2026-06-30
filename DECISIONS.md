@@ -14,6 +14,8 @@
 - Use a campaign-wide schedule for the first version.
 - Keep `avoidTaskbar` enabled by default and render active slides into the primary screen working area before applying them.
 - `StartSafetyWallpaperSlideshow.bat` registers a current-user startup entry and launches the agent through hidden VBS.
+- Employee startup launches both the hidden wallpaper agent and a tray controller.
+- Tray `정책 새로고침` writes `.runtime/refresh.signal`; the agent detects it and syncs policy immediately.
 
 ## Pending
 - Whether production startup registration should use HKCU Run, HKLM Run, or Task Scheduler under NAC.
