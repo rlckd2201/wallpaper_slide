@@ -687,6 +687,13 @@
       return `${bytes} B`;
     }
 
+    function toBase64Utf8(value) {
+      const bytes = new TextEncoder().encode(value);
+      let binary = '';
+      bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+      return btoa(binary);
+    }
+
     async function loadPolicy() {
       const res = await apiFetch(`${API}/policy`, { cache: 'no-store' });
       if (!res.ok) throw new Error('정책을 읽지 못했습니다.');
@@ -784,8 +791,11 @@
 
       for (const file of accepted) {
         setMessage(`업로드 중: ${file.name}`);
-        const res = await apiFetch(`${API}/upload?name=${encodeURIComponent(file.name)}`, {
+        const res = await apiFetch(`${API}/upload`, {
           method: 'POST',
+          headers: {
+            'X-File-Name-Base64': toBase64Utf8(file.name)
+          },
           body: file
         });
 

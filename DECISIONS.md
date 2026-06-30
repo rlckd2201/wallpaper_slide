@@ -25,7 +25,9 @@
 - Keep `avoidTaskbar` enabled by default and render active slides into the primary screen working area before applying them.
 - `StartSafetyWallpaperSlideshow.bat` registers a current-user startup entry and launches the agent through hidden VBS.
 - Employee startup launches both the hidden wallpaper agent and a tray controller.
-- Tray `정책 새로고침` writes `.runtime/refresh.signal`; the agent detects it and syncs policy immediately.
+- Tray policy refresh writes `.runtime/refresh.signal`; the agent detects it and syncs policy immediately.
+- Tray UI Korean labels are built from Unicode code points instead of literal Korean strings to avoid Windows PowerShell 5.1 ANSI decoding corruption.
+- Web admin uploads send Korean filenames as a UTF-8 Base64 HTTP header instead of a URL query parameter to avoid `HttpListener` query-string decoding corruption.
 - Server static file service limits concurrent image downloads to 5; policy JSON requests are not throttled.
 - Uploaded image requests return the saved `images/...` URL so the web page can select the actual stored file.
 - Store admin passwords as PBKDF2 hashes only; do not store the initial password as plaintext in the repo.

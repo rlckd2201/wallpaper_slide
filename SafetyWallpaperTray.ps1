@@ -17,6 +17,30 @@ $MutexName = 'Local\SafetyWallpaperTray'
 
 New-Item -ItemType Directory -Force -Path $RuntimeDir, $LogDir | Out-Null
 
+function ConvertFrom-CodePointHex {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Hex
+    )
+
+    -join (($Hex -split ' ') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object {
+        [char][Convert]::ToInt32($_, 16)
+    })
+}
+
+$UiText = @{
+    AgentTitle = ConvertFrom-CodePointHex 'C548 C804 0020 BC30 ACBD D654 BA74 0020 C5D0 C774 C804 D2B8'
+    Refresh = ConvertFrom-CodePointHex 'C815 CC45 0020 C0C8 B85C ACE0 CE68'
+    RefreshRequested = ConvertFrom-CodePointHex 'C815 CC45 0020 C0C8 B85C ACE0 CE68 C744 0020 C694 CCAD D588 C2B5 B2C8 B2E4 002E'
+    Status = ConvertFrom-CodePointHex 'C0C1 D0DC 0020 BCF4 AE30'
+    OpenLog = ConvertFrom-CodePointHex 'B85C ADF8 0020 C5F4 AE30'
+    OpenPolicyUrl = ConvertFrom-CodePointHex 'C815 CC45 0020 0055 0052 004C 0020 C5F4 AE30'
+    CloseTray = ConvertFrom-CodePointHex 'D2B8 B808 C774 0020 C544 C774 CF58 0020 B2EB AE30'
+    PolicyUrl = ConvertFrom-CodePointHex 'C815 CC45 0020 C8FC C18C 003A'
+    RecentLog = ConvertFrom-CodePointHex 'CD5C ADFC 0020 B85C ADF8 003A'
+    NoLog = ConvertFrom-CodePointHex 'C544 C9C1 0020 B85C ADF8 0020 D30C C77C C774 0020 C5C6 C2B5 B2C8 B2E4 002E'
+}
+
 function Get-PolicyUrl {
     if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
         return 'http://172.16.19.35:28080/safety-wallpaper/policy.json'
@@ -48,11 +72,11 @@ function Show-Status {
         $logText = (Get-Content -LiteralPath $LogPath -Tail 8 -Encoding UTF8) -join [Environment]::NewLine
     }
     else {
-        $logText = 'No log file yet.'
+        $logText = $UiText.NoLog
     }
 
-    $message = "Policy URL:`r`n$policyUrl`r`n`r`nRecent log:`r`n$logText"
-    [void][System.Windows.Forms.MessageBox]::Show($message, 'Safety Wallpaper Agent', [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+    $message = "$($UiText.PolicyUrl)`r`n$policyUrl`r`n`r`n$($UiText.RecentLog)`r`n$logText"
+    [void][System.Windows.Forms.MessageBox]::Show($message, $UiText.AgentTitle, [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 }
 
 $mutex = New-Object System.Threading.Mutex($false, $MutexName)
@@ -72,28 +96,28 @@ try {
 
     $notifyIcon = New-Object System.Windows.Forms.NotifyIcon
     $notifyIcon.Icon = [System.Drawing.SystemIcons]::Information
-    $notifyIcon.Text = 'Safety Wallpaper Agent'
+    $notifyIcon.Text = $UiText.AgentTitle
     $notifyIcon.Visible = $true
 
     $menu = New-Object System.Windows.Forms.ContextMenuStrip
 
     $refreshItem = New-Object System.Windows.Forms.ToolStripMenuItem
-    $refreshItem.Text = '정책 새로고침'
+    $refreshItem.Text = $UiText.Refresh
     $refreshItem.Add_Click({
         Write-RefreshSignal
-        $notifyIcon.BalloonTipTitle = 'Safety Wallpaper Agent'
-        $notifyIcon.BalloonTipText = '정책 새로고침을 요청했습니다.'
+        $notifyIcon.BalloonTipTitle = $UiText.AgentTitle
+        $notifyIcon.BalloonTipText = $UiText.RefreshRequested
         $notifyIcon.ShowBalloonTip(2000)
     })
     [void]$menu.Items.Add($refreshItem)
 
     $statusItem = New-Object System.Windows.Forms.ToolStripMenuItem
-    $statusItem.Text = '상태 보기'
+    $statusItem.Text = $UiText.Status
     $statusItem.Add_Click({ Show-Status })
     [void]$menu.Items.Add($statusItem)
 
     $logItem = New-Object System.Windows.Forms.ToolStripMenuItem
-    $logItem.Text = '로그 열기'
+    $logItem.Text = $UiText.OpenLog
     $logItem.Add_Click({
         if (Test-Path -LiteralPath $LogPath -PathType Leaf) {
             Start-Process notepad.exe -ArgumentList "`"$LogPath`""
@@ -102,12 +126,12 @@ try {
     [void]$menu.Items.Add($logItem)
 
     $policyItem = New-Object System.Windows.Forms.ToolStripMenuItem
-    $policyItem.Text = '정책 URL 열기'
+    $policyItem.Text = $UiText.OpenPolicyUrl
     $policyItem.Add_Click({ Start-Process (Get-PolicyUrl) })
     [void]$menu.Items.Add($policyItem)
 
     $exitItem = New-Object System.Windows.Forms.ToolStripMenuItem
-    $exitItem.Text = '트레이 아이콘 닫기'
+    $exitItem.Text = $UiText.CloseTray
     $exitItem.Add_Click({
         $notifyIcon.Visible = $false
         [System.Windows.Forms.Application]::Exit()

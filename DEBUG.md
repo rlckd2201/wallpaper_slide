@@ -110,3 +110,18 @@
 - Super admin server compile retest result: `COMPILE_OK_URLACL_REQUIRED`.
 - Rechecked all 11 seeded account hashes, roles, active flags, and force-change flags: `ADMIN_ROLES_HASHES_OK`.
 - `graphify update .` was retried after super admin changes and still refused to overwrite because the new graph has 54 nodes while the existing graph has 56.
+- User screenshot showed tray context menu Korean text rendered as mojibake.
+- Root cause: Windows PowerShell 5.1 can read UTF-8 `.ps1` files without BOM through the system ANSI code page, corrupting literal Korean menu strings.
+- Replaced tray UI Korean literals in `SafetyWallpaperTray.ps1` with Unicode code point construction.
+- Rechecked tray parser: `TRAY_PARSE_OK`.
+- Restarted the local tray controller with `.runtime/tray.stop.signal` and a hidden PowerShell start.
+- `graphify update .` was retried after tray text fix and refused to overwrite because the new graph has 55 nodes while the existing graph has 56.
+- User confirmed policy apply works and narrowed the remaining issue to Korean filename corruption in the web admin page.
+- Root cause: upload filenames were sent as a URL query parameter, which can be decoded incorrectly by the `HttpListener` request path on Windows.
+- Changed `admin.html` to send `X-File-Name-Base64` containing the browser filename encoded as UTF-8 Base64.
+- Changed `SafetyWallpaperStaticServer.ps1` to decode `X-File-Name-Base64` before saving uploads, with the old `?name=` query parameter retained as a fallback.
+- Existing files already saved with corrupted names must be deleted/reuploaded or renamed manually after deployment.
+- Rechecked parsers after the encoding changes: `TRAY_PARSE_OK`, `STATIC_SERVER_PARSE_OK`.
+- Rechecked server compile/start path after the upload filename fix: `COMPILE_OK_URLACL_REQUIRED`.
+- `git diff --check` passed; only CRLF conversion warnings were reported.
+- `graphify update .` was retried after the upload filename fix and still refused to overwrite because the new graph has 55 nodes while the existing graph has 56.

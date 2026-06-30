@@ -1412,14 +1412,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
 
     private string SaveUploadedImage(HttpListenerRequest request)
     {
-        string rawName = request.QueryString["name"];
-
-        if (String.IsNullOrWhiteSpace(rawName))
-        {
-            throw new InvalidOperationException("\uc5c5\ub85c\ub4dc \ud30c\uc77c\uba85\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.");
-        }
-
-        string fileName = SanitizeFileName(Uri.UnescapeDataString(rawName));
+        string fileName = SanitizeFileName(GetUploadedFileName(request));
         string extension = Path.GetExtension(fileName).ToLowerInvariant();
 
         if (!IsAllowedImageExtension(extension))
@@ -1435,6 +1428,38 @@ public sealed class SafetyWallpaperStaticServerRuntime
         }
 
         return "images/" + fileName;
+    }
+
+    private static string GetUploadedFileName(HttpListenerRequest request)
+    {
+        string encodedName = request.Headers["X-File-Name-Base64"];
+
+        if (!String.IsNullOrWhiteSpace(encodedName))
+        {
+            try
+            {
+                byte[] bytes = Convert.FromBase64String(encodedName);
+                string decodedName = Encoding.UTF8.GetString(bytes);
+
+                if (!String.IsNullOrWhiteSpace(decodedName))
+                {
+                    return decodedName;
+                }
+            }
+            catch
+            {
+                throw new InvalidOperationException("\uc5c5\ub85c\ub4dc \ud30c\uc77c\uba85\uc744 \uc77d\uc744 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.");
+            }
+        }
+
+        string rawName = request.QueryString["name"];
+
+        if (String.IsNullOrWhiteSpace(rawName))
+        {
+            throw new InvalidOperationException("\uc5c5\ub85c\ub4dc \ud30c\uc77c\uba85\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.");
+        }
+
+        return Uri.UnescapeDataString(rawName);
     }
 
     private static bool IsPathUnderRoot(string fullPath, string rootPath)

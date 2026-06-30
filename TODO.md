@@ -13,6 +13,8 @@
 - [x] Add hidden launcher so the persistent PowerShell window does not stay open.
 - [x] Register current-user startup entry when the start batch is executed.
 - [x] Add employee tray icon with manual policy refresh action.
+- [x] Fix employee tray menu Korean text corruption under Windows PowerShell 5.1.
+- [x] Fix Korean filename corruption for new image uploads in the web admin page.
 - [x] Select non-conflicting server policy port with `tcping`; fixed to `28080`.
 - [x] Ensure slides restart from the first image after the final image in the list.
 - [x] Add simple server-side batch and PowerShell static server for `172.16.19.35:28080`.
@@ -30,6 +32,7 @@
 
 ## Open Questions
 - Confirm administrator web page workflow on `172.16.19.35:28080/safety-wallpaper/admin` after pulling the latest server files.
+- Existing broken uploaded filenames on the server need delete/reupload or manual rename after this encoding fix is deployed.
 - Server can now clone `https://github.com/rlckd2201/wallpaper_slide.git`.
 - Should users be allowed to close/pause the slide show?
 - Which Windows versions must be supported?
