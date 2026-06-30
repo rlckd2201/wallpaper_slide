@@ -35,6 +35,8 @@
 - SMTP settings are read from ignored `server-policy-sample/mail-settings.json`; `mail-settings.sample.json` is only a template.
 - Admin uploads return the saved image URL, and the web page automatically selects newly uploaded images.
 - Server static file service allows up to 5 concurrent image downloads and queues additional image requests.
+- Server now writes employee policy/image receive events to `server-policy-sample/logs/client-download.log` with client IP, action, requested file, agent header, and User-Agent.
+- Super admins can view those receive events in the web admin page under `임직원 수신이력`.
 
 ### Next Session Start Checklist
 - Read `SESSION.md`, `TODO.md`, `DECISIONS.md`, and `DEBUG.md`.
@@ -48,6 +50,7 @@
 - It does not show an installer UI.
 - It can be distributed as a folder and started by running the start `.bat`.
 - User PCs are now intended to operate as policy/image listener agents controlled by the central server.
+- Employee agents send `X-Safety-Wallpaper-Agent: SafetyWallpaperSlideshow` when checking policy and downloading images, so server receive logs can distinguish the agent from browser thumbnail requests.
 - Employee PCs have a tray icon for status, log opening, policy URL opening, and manual policy refresh.
 - Tray menu text is generated from Unicode code points in `SafetyWallpaperTray.ps1` so Windows PowerShell 5.1 cannot corrupt Korean menu labels when reading UTF-8 files without BOM.
 - Admin image uploads now send the original browser filename through `X-File-Name-Base64`, and the server decodes it as UTF-8 before saving. This prevents Korean upload filenames from being corrupted on future uploads.

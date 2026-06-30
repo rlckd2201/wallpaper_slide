@@ -27,6 +27,7 @@
 - [x] Add password reset flow that emails a temporary password and forces password change.
 - [x] Split administrator roles into operator and super admin.
 - [x] Add super admin menus for work history, access history, deployment status, queue status, and account management.
+- [x] Add employee policy/image receive history by client IP for super admins.
 - [ ] Confirm real SMTP settings for `server-policy-sample/mail-settings.json` on the server.
 - Add installer/update strategy and uninstall behavior.
 - Add tests or manual verification checklist for image change, date expiry, startup, and black background fallback.

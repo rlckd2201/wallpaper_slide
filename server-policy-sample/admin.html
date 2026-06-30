@@ -541,6 +541,7 @@
         <div class="super-tabs">
           <button data-super-tab="audit" type="button">작업이력보기</button>
           <button data-super-tab="access" type="button">접속이력</button>
+          <button data-super-tab="client" type="button">임직원 수신이력</button>
           <button data-super-tab="deploy" type="button">배포현황</button>
           <button data-super-tab="queue" type="button">배포큐상태</button>
           <button data-super-tab="users" type="button">관리자계정</button>
@@ -920,6 +921,7 @@
 
       if (tab === 'audit') return loadLogView('audit-log', '작업이력');
       if (tab === 'access') return loadLogView('access-log', '접속이력');
+      if (tab === 'client') return loadClientDownloadLog();
       if (tab === 'deploy') return loadDeploymentStatus();
       if (tab === 'queue') return loadQueueStatus();
       if (tab === 'users') return loadAdminUsers();
@@ -944,6 +946,30 @@
         <table>
           <thead><tr><th>시간</th><th>계정</th><th>작업</th><th>내용</th></tr></thead>
           <tbody>${rows || '<tr><td colspan="4">기록이 없습니다.</td></tr>'}</tbody>
+        </table>`;
+    }
+
+    async function loadClientDownloadLog() {
+      const res = await apiFetch(`${API}/client-download-log`, { cache: 'no-store' });
+      const data = await res.json();
+      const rows = (data.items || []).map(item => `
+        <tr>
+          <td>${escapeHtml(item.time)}</td>
+          <td>${escapeHtml(item.ip || item.actor)}</td>
+          <td>${escapeHtml(item.action)}</td>
+          <td>${escapeHtml(item.detail)}</td>
+          <td>${escapeHtml(item.agent || '-')}</td>
+          <td>${escapeHtml(item.userAgent || '-')}</td>
+        </tr>`).join('');
+
+      superContent.innerHTML = `
+        <div class="toolbar">
+          <h2>임직원 수신이력</h2>
+          <button type="button" onclick="loadSuperTab('client')">새로고침</button>
+        </div>
+        <table>
+          <thead><tr><th>시간</th><th>IP</th><th>구분</th><th>요청파일</th><th>에이전트</th><th>User-Agent</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="6">기록이 없습니다.</td></tr>'}</tbody>
         </table>`;
     }
 

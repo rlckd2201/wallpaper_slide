@@ -243,6 +243,12 @@ function Get-FileSha256 {
     return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
 }
 
+function Get-AgentRequestHeaders {
+    return @{
+        'X-Safety-Wallpaper-Agent' = 'SafetyWallpaperSlideshow'
+    }
+}
+
 function Read-PolicyTextFromSource {
     param(
         [Parameter(Mandatory = $true)]
@@ -255,7 +261,7 @@ function Read-PolicyTextFromSource {
     $uri = $null
     if ([System.Uri]::TryCreate($Source, [System.UriKind]::Absolute, [ref]$uri) -and
         ($uri.Scheme -eq 'http' -or $uri.Scheme -eq 'https')) {
-        $response = Invoke-WebRequest -Uri $uri.AbsoluteUri -UseBasicParsing -TimeoutSec $TimeoutSeconds
+        $response = Invoke-WebRequest -Uri $uri.AbsoluteUri -UseBasicParsing -TimeoutSec $TimeoutSeconds -Headers (Get-AgentRequestHeaders)
         return [string]$response.Content
     }
 
@@ -505,7 +511,7 @@ function Copy-PolicyAsset {
     $uri = $null
     if ([System.Uri]::TryCreate($ResolvedSource, [System.UriKind]::Absolute, [ref]$uri) -and
         ($uri.Scheme -eq 'http' -or $uri.Scheme -eq 'https')) {
-        Invoke-WebRequest -Uri $uri.AbsoluteUri -UseBasicParsing -TimeoutSec $TimeoutSeconds -OutFile $tempPath
+        Invoke-WebRequest -Uri $uri.AbsoluteUri -UseBasicParsing -TimeoutSec $TimeoutSeconds -Headers (Get-AgentRequestHeaders) -OutFile $tempPath
     }
     elseif ($null -ne $uri -and $uri.Scheme -eq 'file') {
         Copy-Item -LiteralPath $uri.LocalPath -Destination $tempPath -Force

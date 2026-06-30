@@ -133,3 +133,11 @@
 - Verified .NET `Path.GetFileName()` extracts filenames correctly from `images/...` paths containing Korean text.
 - `git diff --check` passed; only CRLF conversion warnings were reported.
 - `graphify update .` was retried after the delete feature and still refused to overwrite because the new graph has 55 nodes while the existing graph has 56.
+- User asked whether the system can show which IP received/downloaded content.
+- Added `X-Safety-Wallpaper-Agent: SafetyWallpaperSlideshow` to employee policy and image HTTP requests.
+- Added `server-policy-sample/logs/client-download.log` write path for public `policy.json` checks and static image downloads. Each line includes time, IP, action, requested path, agent header, and User-Agent.
+- Added super-admin-only `GET /safety-wallpaper/api/client-download-log` and an `임직원 수신이력` tab in the web admin UI.
+- Rechecked parsers after client receive logging: `AGENT_PARSE_OK`, `STATIC_SERVER_PARSE_OK`.
+- Rechecked server compile/start path after client receive logging: `COMPILE_OK_URLACL_REQUIRED`.
+- `git diff --check` passed; only CRLF conversion warnings were reported.
+- `graphify update .` succeeded after client receive logging: 56 nodes, 99 edges, 12 communities.

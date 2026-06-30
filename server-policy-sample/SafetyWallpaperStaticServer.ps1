@@ -101,6 +101,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
     private readonly string logsPath;
     private readonly string auditLogPath;
     private readonly string accessLogPath;
+    private readonly string clientDownloadLogPath;
     private readonly int port;
     private readonly int maxImageDownloads;
     private readonly SemaphoreSlim imageSemaphore;
@@ -123,6 +124,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
         this.logsPath = Path.Combine(this.rootPath, "logs");
         this.auditLogPath = Path.Combine(this.logsPath, "admin-audit.log");
         this.accessLogPath = Path.Combine(this.logsPath, "admin-access.log");
+        this.clientDownloadLogPath = Path.Combine(this.logsPath, "client-download.log");
         this.port = port;
         this.maxImageDownloads = Math.Max(1, maxImageDownloads);
         this.imageSemaphore = new SemaphoreSlim(this.maxImageDownloads, this.maxImageDownloads);
@@ -278,6 +280,12 @@ public sealed class SafetyWallpaperStaticServerRuntime
                 return;
             }
 
+            if (method == "GET" && route == "api/client-download-log")
+            {
+                SendJson(context.Response, BuildLogJson(this.clientDownloadLogPath));
+                return;
+            }
+
             if (method == "GET" && route == "api/deployment-status")
             {
                 SendJson(context.Response, BuildDeploymentStatusJson());
@@ -338,6 +346,12 @@ public sealed class SafetyWallpaperStaticServerRuntime
             }
 
             bool isImage = IsImageFile(fullPath);
+            bool isPolicyDownload = String.Equals(route.Replace('\\', '/'), "policy.json", StringComparison.OrdinalIgnoreCase);
+
+            if (method == "GET" && (isPolicyDownload || isImage))
+            {
+                WriteClientDownload(context.Request, isPolicyDownload ? "policy_check" : "image_download", route.Replace('\\', '/'));
+            }
 
             if (isImage)
             {
@@ -716,6 +730,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
     {
         return route == "api/audit-log" ||
                route == "api/access-log" ||
+               route == "api/client-download-log" ||
                route == "api/deployment-status" ||
                route == "api/queue-status" ||
                route == "api/admin-users" ||
@@ -1144,6 +1159,25 @@ public sealed class SafetyWallpaperStaticServerRuntime
         WriteJsonLog(this.accessLogPath, actorId, action, detail);
     }
 
+    private void WriteClientDownload(HttpListenerRequest request, string action, string detail)
+    {
+        string ip = GetClientIp(request);
+        string agent = FirstNonEmpty(request.Headers["X-Safety-Wallpaper-Agent"], "");
+        string userAgent = FirstNonEmpty(request.UserAgent, "");
+        string line = "{\"time\":\"" + EscapeJson(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")) + "\"," +
+                      "\"ip\":\"" + EscapeJson(ip) + "\"," +
+                      "\"actor\":\"" + EscapeJson(ip) + "\"," +
+                      "\"action\":\"" + EscapeJson(action) + "\"," +
+                      "\"detail\":\"" + EscapeJson(detail) + "\"," +
+                      "\"agent\":\"" + EscapeJson(agent) + "\"," +
+                      "\"userAgent\":\"" + EscapeJson(userAgent) + "\"}";
+
+        lock (this.logLock)
+        {
+            File.AppendAllText(this.clientDownloadLogPath, line + Environment.NewLine, new UTF8Encoding(false));
+        }
+    }
+
     private void WriteJsonLog(string path, string actorId, string action, string detail)
     {
         string line = "{\"time\":\"" + EscapeJson(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")) + "\"," +
@@ -1155,6 +1189,18 @@ public sealed class SafetyWallpaperStaticServerRuntime
         {
             File.AppendAllText(path, line + Environment.NewLine, new UTF8Encoding(false));
         }
+    }
+
+    private static string GetClientIp(HttpListenerRequest request)
+    {
+        string forwarded = request.Headers["X-Forwarded-For"];
+
+        if (!String.IsNullOrWhiteSpace(forwarded))
+        {
+            return forwarded.Split(',')[0].Trim();
+        }
+
+        return request.RemoteEndPoint == null ? "" : request.RemoteEndPoint.Address.ToString();
     }
 
     private static string GetDictionaryString(Dictionary<string, object> dictionary, string key)
