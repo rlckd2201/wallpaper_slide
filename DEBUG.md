@@ -101,3 +101,12 @@
 - Rechecked seeded admin password hashes and `active=true` after adding the `active` field: `ADMIN_HASHES_ACTIVE_OK`.
 - Confirmed `server-policy-sample/admin-users.json` and `server-policy-sample/mail-settings.json` are both ignored by Git.
 - `graphify update .` was retried after forgot-password changes and still refused to overwrite because the new graph has 54 nodes while the existing graph has 56.
+- Added 6 super admin seed accounts with `role=super`; existing safety team accounts now have `role=operator`.
+- Added seed merge on server start so ignored `admin-users.json` gains missing seeded super admins without overwriting existing password hashes.
+- Added super-admin-only APIs for audit log, access log, deployment status, queue status, and admin user create/update/delete.
+- Added image download active/waiting counters for queue status.
+- Added web super admin section with menus: work history, access history, deployment status, queue status, admin account management.
+- Rechecked parser after role/menu changes: `STATIC_SERVER_PARSE_OK`.
+- Super admin server compile retest result: `COMPILE_OK_URLACL_REQUIRED`.
+- Rechecked all 11 seeded account hashes, roles, active flags, and force-change flags: `ADMIN_ROLES_HASHES_OK`.
+- `graphify update .` was retried after super admin changes and still refused to overwrite because the new graph has 54 nodes while the existing graph has 56.

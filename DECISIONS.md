@@ -13,6 +13,9 @@
 - Manage server `policy.json` and uploaded images through the web administrator page served by the same server.
 - Treat `/safety-wallpaper/admin` as the primary administrator UI for safety staff.
 - Require web admin login before policy/image management API calls.
+- Use `operator` for safety team administrators and `super` for top-level administrators.
+- Super admin menus are restricted server-side as well as hidden client-side.
+- Existing ignored `admin-users.json` is merged with missing seed accounts on server start, but existing password hashes are not overwritten.
 - Keep `policy.json` and image files publicly readable inside the internal network so employee agents can keep polling/downloading without credentials.
 - Keep seeded admin users in `admin-users.sample.json`; copy to ignored `admin-users.json` on first server start so changed passwords survive Git updates.
 - Password reset does not reveal the old password; it generates a temporary password, stores only its hash, emails it, and sets `mustChangePassword=true`.

@@ -27,6 +27,9 @@
 - The web administrator page is the primary admin UI; the older WinForms admin script remains in the repo but is no longer the requested workflow.
 - Environment/safety team admin login is now required for web admin API actions.
 - Admin seed users live in `server-policy-sample/admin-users.sample.json`; server first run copies this to ignored `admin-users.json`.
+- Admin users now have roles: environment/safety team accounts are `operator`, the 6 added internal accounts are `super`.
+- On server start, seed users missing from existing ignored `admin-users.json` are merged without overwriting existing password hashes.
+- Super admins can access work history, access history, deployment status, queue status, and admin account create/update/delete.
 - Admin passwords are stored as PBKDF2 hashes, and all seeded users must change the initial password on first login.
 - Admin forgot-password flow issues a new temporary password, stores only its PBKDF2 hash, sends the temporary password to the registered email, and forces password change after login.
 - SMTP settings are read from ignored `server-policy-sample/mail-settings.json`; `mail-settings.sample.json` is only a template.

@@ -11,6 +11,7 @@ $RootPath = (Resolve-Path -LiteralPath $Root).Path
 
 Add-Type -ReferencedAssemblies "System.Web.Extensions.dll" -TypeDefinition @'
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -31,6 +32,7 @@ public sealed class AdminUserRecord
     public string name { get; set; }
     public string title { get; set; }
     public string email { get; set; }
+    public string role { get; set; }
     public bool enabled { get; set; }
     public bool? active { get; set; }
     public bool mustChangePassword { get; set; }
@@ -76,6 +78,17 @@ public sealed class MailSettings
     public int timeoutMilliseconds { get; set; }
 }
 
+public sealed class AdminUserUpsertRequest
+{
+    public string id { get; set; }
+    public string name { get; set; }
+    public string title { get; set; }
+    public string email { get; set; }
+    public string role { get; set; }
+    public bool active { get; set; }
+    public string password { get; set; }
+}
+
 public sealed class SafetyWallpaperStaticServerRuntime
 {
     private const string SessionCookieName = "SafetyWallpaperAdminSession";
@@ -85,13 +98,19 @@ public sealed class SafetyWallpaperStaticServerRuntime
     private readonly string adminUsersPath;
     private readonly string adminUsersTemplatePath;
     private readonly string mailSettingsPath;
+    private readonly string logsPath;
+    private readonly string auditLogPath;
+    private readonly string accessLogPath;
     private readonly int port;
     private readonly int maxImageDownloads;
     private readonly SemaphoreSlim imageSemaphore;
     private readonly HttpListener listener;
     private readonly object authLock = new object();
+    private readonly object logLock = new object();
     private readonly Dictionary<string, AdminUserRecord> adminUsers = new Dictionary<string, AdminUserRecord>(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, AdminSessionRecord> sessions = new Dictionary<string, AdminSessionRecord>(StringComparer.Ordinal);
+    private int imageDownloadsActive = 0;
+    private int imageDownloadsWaiting = 0;
 
     public SafetyWallpaperStaticServerRuntime(string rootPath, int port, int maxImageDownloads)
     {
@@ -101,12 +120,16 @@ public sealed class SafetyWallpaperStaticServerRuntime
         this.adminUsersPath = Path.Combine(this.rootPath, "admin-users.json");
         this.adminUsersTemplatePath = Path.Combine(this.rootPath, "admin-users.sample.json");
         this.mailSettingsPath = Path.Combine(this.rootPath, "mail-settings.json");
+        this.logsPath = Path.Combine(this.rootPath, "logs");
+        this.auditLogPath = Path.Combine(this.logsPath, "admin-audit.log");
+        this.accessLogPath = Path.Combine(this.logsPath, "admin-access.log");
         this.port = port;
         this.maxImageDownloads = Math.Max(1, maxImageDownloads);
         this.imageSemaphore = new SemaphoreSlim(this.maxImageDownloads, this.maxImageDownloads);
         this.listener = new HttpListener();
         this.listener.Prefixes.Add("http://+:" + this.port + "/");
         Directory.CreateDirectory(this.imagesPath);
+        Directory.CreateDirectory(this.logsPath);
         EnsureAdminUsersFile();
     }
 
@@ -130,6 +153,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
     private void HandleRequest(HttpListenerContext context)
     {
         bool imageSlotAcquired = false;
+        AdminUserRecord currentUser = null;
 
         try
         {
@@ -187,7 +211,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
 
             if (route.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
             {
-                AdminUserRecord currentUser = RequireAdminUser(context);
+                currentUser = RequireAdminUser(context);
 
                 if (currentUser == null)
                 {
@@ -199,6 +223,11 @@ public sealed class SafetyWallpaperStaticServerRuntime
                     SendJson(context.Response, 403, "{\"ok\":false,\"mustChangePassword\":true,\"message\":\"password_change_required\"}");
                     return;
                 }
+            }
+
+            if (IsSuperAdminRoute(route) && !RequireSuperAdmin(context, currentUser))
+            {
+                return;
             }
 
             if (method == "GET" && route == "api/policy")
@@ -216,6 +245,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
             if (method == "POST" && route == "api/policy")
             {
                 SavePolicy(context.Request);
+                WriteAudit(currentUser, "policy_save", "policy.json");
                 SendJson(context.Response, "{\"ok\":true}");
                 return;
             }
@@ -223,8 +253,65 @@ public sealed class SafetyWallpaperStaticServerRuntime
             if (method == "POST" && route == "api/upload")
             {
                 string savedUrl = SaveUploadedImage(context.Request);
+                WriteAudit(currentUser, "image_upload", savedUrl);
                 SendJson(context.Response, "{\"ok\":true,\"url\":\"" + EscapeJson(savedUrl) + "\"}");
                 return;
+            }
+
+            if (method == "GET" && route == "api/audit-log")
+            {
+                SendJson(context.Response, BuildLogJson(this.auditLogPath));
+                return;
+            }
+
+            if (method == "GET" && route == "api/access-log")
+            {
+                SendJson(context.Response, BuildLogJson(this.accessLogPath));
+                return;
+            }
+
+            if (method == "GET" && route == "api/deployment-status")
+            {
+                SendJson(context.Response, BuildDeploymentStatusJson());
+                return;
+            }
+
+            if (method == "GET" && route == "api/queue-status")
+            {
+                SendJson(context.Response, BuildQueueStatusJson());
+                return;
+            }
+
+            if (method == "GET" && route == "api/admin-users")
+            {
+                SendJson(context.Response, BuildAdminUsersJson());
+                return;
+            }
+
+            if (method == "POST" && route == "api/admin-users")
+            {
+                UpsertAdminUser(context.Request, currentUser, false, null);
+                SendJson(context.Response, "{\"ok\":true}");
+                return;
+            }
+
+            if (route.StartsWith("api/admin-users/", StringComparison.OrdinalIgnoreCase))
+            {
+                string targetId = NormalizeAdminId(route.Substring("api/admin-users/".Length));
+
+                if (method == "PUT")
+                {
+                    UpsertAdminUser(context.Request, currentUser, true, targetId);
+                    SendJson(context.Response, "{\"ok\":true}");
+                    return;
+                }
+
+                if (method == "DELETE")
+                {
+                    DeleteAdminUser(targetId, currentUser);
+                    SendJson(context.Response, "{\"ok\":true}");
+                    return;
+                }
             }
 
             string relativePath = route.Replace('/', Path.DirectorySeparatorChar);
@@ -246,7 +333,10 @@ public sealed class SafetyWallpaperStaticServerRuntime
 
             if (isImage)
             {
+                Interlocked.Increment(ref this.imageDownloadsWaiting);
                 this.imageSemaphore.Wait();
+                Interlocked.Decrement(ref this.imageDownloadsWaiting);
+                Interlocked.Increment(ref this.imageDownloadsActive);
                 imageSlotAcquired = true;
             }
 
@@ -266,6 +356,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
         {
             if (imageSlotAcquired)
             {
+                Interlocked.Decrement(ref this.imageDownloadsActive);
                 this.imageSemaphore.Release();
             }
 
@@ -292,6 +383,71 @@ public sealed class SafetyWallpaperStaticServerRuntime
         }
 
         LoadAdminUsers();
+        MergeSeedAdminUsers();
+    }
+
+    private void MergeSeedAdminUsers()
+    {
+        if (!File.Exists(this.adminUsersTemplatePath))
+        {
+            return;
+        }
+
+        string text = File.ReadAllText(this.adminUsersTemplatePath, Encoding.UTF8);
+        JavaScriptSerializer serializer = new JavaScriptSerializer();
+        AdminUsersFile seedFile = serializer.Deserialize<AdminUsersFile>(text);
+
+        if (seedFile == null || seedFile.users == null)
+        {
+            return;
+        }
+
+        bool changed = false;
+
+        lock (this.authLock)
+        {
+            foreach (AdminUserRecord seedUser in seedFile.users)
+            {
+                if (seedUser == null || String.IsNullOrWhiteSpace(seedUser.id))
+                {
+                    continue;
+                }
+
+                string id = NormalizeAdminId(seedUser.id);
+                AdminUserRecord existing;
+
+                if (!this.adminUsers.TryGetValue(id, out existing))
+                {
+                    NormalizeAdminUser(seedUser);
+                    this.adminUsers[id] = seedUser;
+                    changed = true;
+                    continue;
+                }
+
+                if (String.IsNullOrWhiteSpace(existing.role))
+                {
+                    existing.role = String.IsNullOrWhiteSpace(seedUser.role) ? "operator" : seedUser.role;
+                    changed = true;
+                }
+
+                if (!existing.active.HasValue)
+                {
+                    existing.active = seedUser.active.HasValue ? seedUser.active : existing.enabled;
+                    changed = true;
+                }
+
+                if (String.IsNullOrWhiteSpace(existing.email) && !String.IsNullOrWhiteSpace(seedUser.email))
+                {
+                    existing.email = seedUser.email;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                SaveAdminUsersLocked();
+            }
+        }
     }
 
     private void LoadAdminUsers()
@@ -316,6 +472,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
                     continue;
                 }
 
+                NormalizeAdminUser(user);
                 this.adminUsers[NormalizeAdminId(user.id)] = user;
             }
         }
@@ -363,12 +520,14 @@ public sealed class SafetyWallpaperStaticServerRuntime
 
         if (user == null || !IsUserActive(user) || !VerifyPassword(password, user.passwordHash))
         {
+            WriteAccess(userId, "login_failed", context.Request.RemoteEndPoint == null ? "" : context.Request.RemoteEndPoint.ToString());
             SendJson(context.Response, 401, "{\"ok\":false,\"message\":\"invalid_login\"}");
             return;
         }
 
         string token = CreateSession(user.id);
         SetSessionCookie(context.Response, token);
+        WriteAccess(user.id, "login_success", context.Request.RemoteEndPoint == null ? "" : context.Request.RemoteEndPoint.ToString());
         SendJson(context.Response, "{\"ok\":true,\"mustChangePassword\":" + JsonBool(user.mustChangePassword) + ",\"user\":" + BuildUserJson(user) + "}");
     }
 
@@ -380,7 +539,13 @@ public sealed class SafetyWallpaperStaticServerRuntime
         {
             lock (this.authLock)
             {
-                this.sessions.Remove(token);
+                AdminSessionRecord session;
+
+                if (this.sessions.TryGetValue(token, out session))
+                {
+                    WriteAccess(session.UserId, "logout", context.Request.RemoteEndPoint == null ? "" : context.Request.RemoteEndPoint.ToString());
+                    this.sessions.Remove(token);
+                }
             }
         }
 
@@ -453,6 +618,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
         try
         {
             SendPasswordResetMail(mailSettings, user.email, user.id, temporaryPassword);
+            WriteAudit(user, "password_reset", user.id);
             SendJson(context.Response, "{\"ok\":true}");
         }
         catch
@@ -520,6 +686,7 @@ public sealed class SafetyWallpaperStaticServerRuntime
             user.mustChangePassword = false;
             user.lastPasswordChange = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             SaveAdminUsersLocked();
+            WriteAudit(user, "password_change", user.id);
             SendJson(context.Response, "{\"ok\":true,\"mustChangePassword\":false,\"user\":" + BuildUserJson(user) + "}");
         }
     }
@@ -535,6 +702,117 @@ public sealed class SafetyWallpaperStaticServerRuntime
         }
 
         return user;
+    }
+
+    private static bool IsSuperAdminRoute(string route)
+    {
+        return route == "api/audit-log" ||
+               route == "api/access-log" ||
+               route == "api/deployment-status" ||
+               route == "api/queue-status" ||
+               route == "api/admin-users" ||
+               route.StartsWith("api/admin-users/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool RequireSuperAdmin(HttpListenerContext context, AdminUserRecord user)
+    {
+        if (!IsSuperAdmin(user))
+        {
+            SendJson(context.Response, 403, "{\"ok\":false,\"message\":\"super_admin_required\"}");
+            return false;
+        }
+
+        return true;
+    }
+
+    private void UpsertAdminUser(HttpListenerRequest request, AdminUserRecord actor, bool isUpdate, string targetId)
+    {
+        AdminUserUpsertRequest body = ReadJsonBody<AdminUserUpsertRequest>(request);
+
+        if (body == null)
+        {
+            throw new InvalidOperationException("admin user body is empty.");
+        }
+
+        string id = NormalizeAdminId(isUpdate ? targetId : body.id);
+
+        if (String.IsNullOrWhiteSpace(id))
+        {
+            throw new InvalidOperationException("admin id is required.");
+        }
+
+        lock (this.authLock)
+        {
+            AdminUserRecord user;
+
+            if (!this.adminUsers.TryGetValue(id, out user))
+            {
+                if (isUpdate)
+                {
+                    throw new InvalidOperationException("admin user not found.");
+                }
+
+                if (String.IsNullOrWhiteSpace(body.password))
+                {
+                    throw new InvalidOperationException("initial password is required.");
+                }
+
+                user = new AdminUserRecord();
+                user.id = id;
+                user.passwordHash = HashPassword(body.password);
+                user.mustChangePassword = true;
+                user.lastPasswordChange = "";
+                this.adminUsers[id] = user;
+            }
+            else if (!isUpdate)
+            {
+                throw new InvalidOperationException("admin user already exists.");
+            }
+            else if (!String.IsNullOrWhiteSpace(body.password))
+            {
+                user.passwordHash = HashPassword(body.password);
+                user.mustChangePassword = true;
+                user.lastPasswordChange = "";
+            }
+
+            user.name = TrimOrEmpty(body.name);
+            user.title = TrimOrEmpty(body.title);
+            user.email = TrimOrEmpty(body.email);
+            user.role = NormalizeRole(body.role);
+            user.active = body.active;
+            user.enabled = body.active;
+            NormalizeAdminUser(user);
+            SaveAdminUsersLocked();
+        }
+
+        WriteAudit(actor, isUpdate ? "admin_user_update" : "admin_user_create", id);
+    }
+
+    private void DeleteAdminUser(string targetId, AdminUserRecord actor)
+    {
+        string id = NormalizeAdminId(targetId);
+
+        if (String.IsNullOrWhiteSpace(id))
+        {
+            throw new InvalidOperationException("admin id is required.");
+        }
+
+        if (actor != null && String.Equals(NormalizeAdminId(actor.id), id, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("cannot delete current user.");
+        }
+
+        lock (this.authLock)
+        {
+            if (!this.adminUsers.Remove(id))
+            {
+                throw new InvalidOperationException("admin user not found.");
+            }
+
+            SaveAdminUsersLocked();
+        }
+
+        WriteAudit(actor, "admin_user_delete", id);
     }
 
     private AdminUserRecord GetCurrentUser(HttpListenerRequest request)
@@ -705,7 +983,135 @@ public sealed class SafetyWallpaperStaticServerRuntime
         return "{\"id\":\"" + EscapeJson(user.id) + "\"," +
                "\"name\":\"" + EscapeJson(user.name) + "\"," +
                "\"title\":\"" + EscapeJson(user.title) + "\"," +
-               "\"email\":\"" + EscapeJson(user.email) + "\"}";
+               "\"email\":\"" + EscapeJson(user.email) + "\"," +
+               "\"role\":\"" + EscapeJson(NormalizeRole(user.role)) + "\"," +
+               "\"active\":" + JsonBool(IsUserActive(user)) + "}";
+    }
+
+    private string BuildAdminUsersJson()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.Append("{\"users\":[");
+
+        bool first = true;
+
+        lock (this.authLock)
+        {
+            foreach (AdminUserRecord user in this.adminUsers.Values)
+            {
+                if (!first)
+                {
+                    builder.Append(",");
+                }
+
+                first = false;
+                builder.Append("{");
+                builder.Append("\"id\":\"").Append(EscapeJson(user.id)).Append("\",");
+                builder.Append("\"name\":\"").Append(EscapeJson(user.name)).Append("\",");
+                builder.Append("\"title\":\"").Append(EscapeJson(user.title)).Append("\",");
+                builder.Append("\"email\":\"").Append(EscapeJson(user.email)).Append("\",");
+                builder.Append("\"role\":\"").Append(EscapeJson(NormalizeRole(user.role))).Append("\",");
+                builder.Append("\"active\":").Append(JsonBool(IsUserActive(user))).Append(",");
+                builder.Append("\"mustChangePassword\":").Append(JsonBool(user.mustChangePassword)).Append(",");
+                builder.Append("\"lastPasswordChange\":\"").Append(EscapeJson(user.lastPasswordChange)).Append("\"");
+                builder.Append("}");
+            }
+        }
+
+        builder.Append("]}");
+        return builder.ToString();
+    }
+
+    private string BuildLogJson(string path)
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.Append("{\"items\":[");
+
+        string[] lines = File.Exists(path) ? File.ReadAllLines(path, Encoding.UTF8) : new string[0];
+        int start = Math.Max(0, lines.Length - 200);
+        bool first = true;
+
+        for (int i = lines.Length - 1; i >= start; i--)
+        {
+            if (String.IsNullOrWhiteSpace(lines[i]))
+            {
+                continue;
+            }
+
+            if (!first)
+            {
+                builder.Append(",");
+            }
+
+            first = false;
+            builder.Append(lines[i]);
+        }
+
+        builder.Append("]}");
+        return builder.ToString();
+    }
+
+    private string BuildDeploymentStatusJson()
+    {
+        int imageCount = 0;
+
+        if (Directory.Exists(this.imagesPath))
+        {
+            foreach (string path in Directory.GetFiles(this.imagesPath))
+            {
+                if (IsImageFile(path))
+                {
+                    imageCount++;
+                }
+            }
+        }
+
+        string policyVersion = "";
+        string enabled = "false";
+        string campaignStart = "";
+        string campaignEnd = "";
+        int slideCount = 0;
+
+        if (File.Exists(this.policyPath))
+        {
+            string text = File.ReadAllText(this.policyPath, Encoding.UTF8);
+            JavaScriptSerializer serializer = new JavaScriptSerializer();
+            Dictionary<string, object> policy = serializer.Deserialize<Dictionary<string, object>>(text);
+
+            if (policy != null)
+            {
+                policyVersion = GetDictionaryString(policy, "policyVersion");
+                campaignStart = GetDictionaryString(policy, "campaignStart");
+                campaignEnd = GetDictionaryString(policy, "campaignEnd");
+                enabled = GetDictionaryBool(policy, "enabled") ? "true" : "false";
+
+                object slidesObj;
+
+                if (policy.TryGetValue("slides", out slidesObj) && slidesObj is ArrayList)
+                {
+                    slideCount = ((ArrayList)slidesObj).Count;
+                }
+            }
+        }
+
+        return "{\"serverTime\":\"" + EscapeJson(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")) + "\"," +
+               "\"policyVersion\":\"" + EscapeJson(policyVersion) + "\"," +
+               "\"enabled\":" + enabled + "," +
+               "\"campaignStart\":\"" + EscapeJson(campaignStart) + "\"," +
+               "\"campaignEnd\":\"" + EscapeJson(campaignEnd) + "\"," +
+               "\"selectedSlides\":" + slideCount + "," +
+               "\"uploadedImages\":" + imageCount + "}";
+    }
+
+    private string BuildQueueStatusJson()
+    {
+        int active = Math.Max(0, Volatile.Read(ref this.imageDownloadsActive));
+        int waiting = Math.Max(0, Volatile.Read(ref this.imageDownloadsWaiting));
+
+        return "{\"maxImageDownloads\":" + this.maxImageDownloads + "," +
+               "\"activeImageDownloads\":" + active + "," +
+               "\"waitingImageDownloads\":" + waiting + "," +
+               "\"availableImageSlots\":" + Math.Max(0, this.maxImageDownloads - active) + "}";
     }
 
     private static string GetCookie(HttpListenerRequest request, string name)
@@ -717,6 +1123,70 @@ public sealed class SafetyWallpaperStaticServerRuntime
 
         Cookie cookie = request.Cookies[name];
         return cookie == null ? null : cookie.Value;
+    }
+
+    private void WriteAudit(AdminUserRecord actor, string action, string detail)
+    {
+        string actorId = actor == null ? "" : actor.id;
+        WriteJsonLog(this.auditLogPath, actorId, action, detail);
+    }
+
+    private void WriteAccess(string actorId, string action, string detail)
+    {
+        WriteJsonLog(this.accessLogPath, actorId, action, detail);
+    }
+
+    private void WriteJsonLog(string path, string actorId, string action, string detail)
+    {
+        string line = "{\"time\":\"" + EscapeJson(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")) + "\"," +
+                      "\"actor\":\"" + EscapeJson(actorId) + "\"," +
+                      "\"action\":\"" + EscapeJson(action) + "\"," +
+                      "\"detail\":\"" + EscapeJson(detail) + "\"}";
+
+        lock (this.logLock)
+        {
+            File.AppendAllText(path, line + Environment.NewLine, new UTF8Encoding(false));
+        }
+    }
+
+    private static string GetDictionaryString(Dictionary<string, object> dictionary, string key)
+    {
+        if (dictionary == null)
+        {
+            return "";
+        }
+
+        object value;
+
+        if (!dictionary.TryGetValue(key, out value) || value == null)
+        {
+            return "";
+        }
+
+        return Convert.ToString(value);
+    }
+
+    private static bool GetDictionaryBool(Dictionary<string, object> dictionary, string key)
+    {
+        if (dictionary == null)
+        {
+            return false;
+        }
+
+        object value;
+
+        if (!dictionary.TryGetValue(key, out value) || value == null)
+        {
+            return false;
+        }
+
+        if (value is bool)
+        {
+            return (bool)value;
+        }
+
+        bool result;
+        return Boolean.TryParse(Convert.ToString(value), out result) && result;
     }
 
     private static void SetSessionCookie(HttpListenerResponse response, string token)
@@ -765,6 +1235,11 @@ public sealed class SafetyWallpaperStaticServerRuntime
         return "";
     }
 
+    private static string TrimOrEmpty(string value)
+    {
+        return String.IsNullOrWhiteSpace(value) ? "" : value.Trim();
+    }
+
     private static bool IsUserActive(AdminUserRecord user)
     {
         if (user == null)
@@ -773,6 +1248,45 @@ public sealed class SafetyWallpaperStaticServerRuntime
         }
 
         return user.active.HasValue ? user.active.Value : user.enabled;
+    }
+
+    private static void NormalizeAdminUser(AdminUserRecord user)
+    {
+        if (user == null)
+        {
+            return;
+        }
+
+        user.id = NormalizeAdminId(user.id);
+
+        if (String.IsNullOrWhiteSpace(user.role))
+        {
+            user.role = "operator";
+        }
+
+        user.role = NormalizeRole(user.role);
+
+        if (!user.active.HasValue)
+        {
+            user.active = user.enabled;
+        }
+
+        user.enabled = user.active.Value;
+    }
+
+    private static string NormalizeRole(string role)
+    {
+        if (String.Equals(role, "super", StringComparison.OrdinalIgnoreCase))
+        {
+            return "super";
+        }
+
+        return "operator";
+    }
+
+    private static bool IsSuperAdmin(AdminUserRecord user)
+    {
+        return user != null && String.Equals(NormalizeRole(user.role), "super", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsValidNewPassword(string password)

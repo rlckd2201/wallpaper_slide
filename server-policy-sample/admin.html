@@ -329,15 +329,87 @@
       font-size: 14px;
     }
 
+    .super-panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .super-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .super-tabs button.active {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .super-content {
+      display: grid;
+      gap: 14px;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .status-box {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: #f8fbff;
+    }
+
+    .status-box strong {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+    }
+
+    .admin-form {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .admin-form .wide {
+      grid-column: span 2;
+    }
+
     @media (max-width: 900px) {
       header { align-items: flex-start; flex-direction: column; }
       .grid { grid-template-columns: 1fr 1fr; }
+      .admin-form { grid-template-columns: 1fr 1fr; }
       .footer-inner { align-items: stretch; flex-direction: column; }
     }
 
     @media (max-width: 560px) {
       main { padding: 14px; }
       .grid { grid-template-columns: 1fr; }
+      .admin-form { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -452,6 +524,20 @@
       </div>
       <div id="imageGrid" class="image-grid"></div>
     </section>
+
+    <section id="superAdminSection" hidden>
+      <div class="toolbar">
+        <h2>최고관리자 메뉴</h2>
+        <div class="super-tabs">
+          <button data-super-tab="audit" type="button">작업이력보기</button>
+          <button data-super-tab="access" type="button">접속이력</button>
+          <button data-super-tab="deploy" type="button">배포현황</button>
+          <button data-super-tab="queue" type="button">배포큐상태</button>
+          <button data-super-tab="users" type="button">관리자계정</button>
+        </div>
+      </div>
+      <div id="superContent" class="super-content"></div>
+    </section>
   </main>
 
   <div class="footer">
@@ -472,9 +558,13 @@
     const authMessage = document.getElementById('authMessage');
     const imageGrid = document.getElementById('imageGrid');
     const message = document.getElementById('message');
+    const superAdminSection = document.getElementById('superAdminSection');
+    const superContent = document.getElementById('superContent');
     const selectedUrls = new Set();
     let imageList = [];
     let appLoaded = false;
+    let currentUser = null;
+    let editingAdminId = '';
 
     document.getElementById('policyUrl').textContent = POLICY_URL;
 
@@ -506,9 +596,13 @@
     }
 
     function showApp(user) {
+      currentUser = user;
       authView.hidden = true;
       appView.hidden = false;
-      document.getElementById('userStatus').textContent = `${user.name} ${user.title}`;
+      const roleName = user.role === 'super' ? '최고관리자' : '운영관리자';
+      document.getElementById('userStatus').textContent = `${user.name} ${user.title} · ${roleName}`;
+      superAdminSection.hidden = user.role !== 'super';
+      if (user.role === 'super' && !superContent.innerHTML) loadSuperTab('deploy');
     }
 
     async function apiFetch(url, options = {}) {
@@ -745,6 +839,200 @@
       alert('적용했습니다. 임직원 PC는 다음 정책 확인 때 반영합니다.');
     }
 
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch]));
+    }
+
+    async function loadSuperTab(tab) {
+      if (!currentUser || currentUser.role !== 'super') return;
+
+      document.querySelectorAll('[data-super-tab]').forEach(button => {
+        button.classList.toggle('active', button.dataset.superTab === tab);
+      });
+
+      if (tab === 'audit') return loadLogView('audit-log', '작업이력');
+      if (tab === 'access') return loadLogView('access-log', '접속이력');
+      if (tab === 'deploy') return loadDeploymentStatus();
+      if (tab === 'queue') return loadQueueStatus();
+      if (tab === 'users') return loadAdminUsers();
+    }
+
+    async function loadLogView(endpoint, title) {
+      const res = await apiFetch(`${API}/${endpoint}`, { cache: 'no-store' });
+      const data = await res.json();
+      const rows = (data.items || []).map(item => `
+        <tr>
+          <td>${escapeHtml(item.time)}</td>
+          <td>${escapeHtml(item.actor)}</td>
+          <td>${escapeHtml(item.action)}</td>
+          <td>${escapeHtml(item.detail)}</td>
+        </tr>`).join('');
+
+      superContent.innerHTML = `
+        <div class="toolbar">
+          <h2>${title}</h2>
+          <button type="button" onclick="loadSuperTab('${endpoint === 'audit-log' ? 'audit' : 'access'}')">새로고침</button>
+        </div>
+        <table>
+          <thead><tr><th>시간</th><th>계정</th><th>작업</th><th>내용</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="4">기록이 없습니다.</td></tr>'}</tbody>
+        </table>`;
+    }
+
+    async function loadDeploymentStatus() {
+      const res = await apiFetch(`${API}/deployment-status`, { cache: 'no-store' });
+      const data = await res.json();
+      superContent.innerHTML = `
+        <div class="toolbar">
+          <h2>배포현황</h2>
+          <button type="button" onclick="loadSuperTab('deploy')">새로고침</button>
+        </div>
+        <div class="status-grid">
+          <div class="status-box"><strong>서버 시간</strong>${escapeHtml(data.serverTime)}</div>
+          <div class="status-box"><strong>정책 버전</strong>${escapeHtml(data.policyVersion || '-')}</div>
+          <div class="status-box"><strong>게시 사용</strong>${data.enabled ? '사용' : '미사용'}</div>
+          <div class="status-box"><strong>게시 시작</strong>${escapeHtml(data.campaignStart || '-')}</div>
+          <div class="status-box"><strong>게시 종료</strong>${escapeHtml(data.campaignEnd || '-')}</div>
+          <div class="status-box"><strong>선택된 그림</strong>${data.selectedSlides || 0}개</div>
+          <div class="status-box"><strong>업로드된 그림</strong>${data.uploadedImages || 0}개</div>
+        </div>`;
+    }
+
+    async function loadQueueStatus() {
+      const res = await apiFetch(`${API}/queue-status`, { cache: 'no-store' });
+      const data = await res.json();
+      superContent.innerHTML = `
+        <div class="toolbar">
+          <h2>배포큐상태</h2>
+          <button type="button" onclick="loadSuperTab('queue')">새로고침</button>
+        </div>
+        <div class="status-grid">
+          <div class="status-box"><strong>최대 동시 이미지 다운로드</strong>${data.maxImageDownloads}명</div>
+          <div class="status-box"><strong>현재 다운로드 중</strong>${data.activeImageDownloads}명</div>
+          <div class="status-box"><strong>대기 중</strong>${data.waitingImageDownloads}명</div>
+          <div class="status-box"><strong>남은 슬롯</strong>${data.availableImageSlots}개</div>
+        </div>`;
+    }
+
+    async function loadAdminUsers() {
+      const res = await apiFetch(`${API}/admin-users`, { cache: 'no-store' });
+      const data = await res.json();
+      renderAdminUsers(data.users || []);
+    }
+
+    function renderAdminUsers(users) {
+      const rows = users.map(user => `
+        <tr>
+          <td>${escapeHtml(user.id)}</td>
+          <td>${escapeHtml(user.name)}</td>
+          <td>${escapeHtml(user.title)}</td>
+          <td>${escapeHtml(user.email)}</td>
+          <td>${user.role === 'super' ? '최고관리자' : '운영관리자'}</td>
+          <td>${user.active ? '사용' : '중지'}</td>
+          <td>${user.mustChangePassword ? '필요' : '완료'}</td>
+          <td>
+            <button type="button" onclick='editAdminUser(${JSON.stringify(user).replace(/'/g, '&#39;')})'>수정</button>
+            <button class="warn" type="button" onclick="deleteAdminUser('${escapeHtml(user.id)}')">삭제</button>
+          </td>
+        </tr>`).join('');
+
+      superContent.innerHTML = `
+        <div class="toolbar">
+          <h2>관리자계정</h2>
+          <button type="button" onclick="clearAdminForm()">신규 입력</button>
+        </div>
+        <div class="admin-form">
+          <label>아이디<input id="adminId" type="text" placeholder="메일 @ 앞 아이디"></label>
+          <label>이름<input id="adminName" type="text"></label>
+          <label>직급<input id="adminTitle" type="text"></label>
+          <label class="wide">이메일<input id="adminEmail" type="email"></label>
+          <label>권한
+            <select id="adminRole">
+              <option value="operator">운영관리자</option>
+              <option value="super">최고관리자</option>
+            </select>
+          </label>
+          <label>상태
+            <select id="adminActive">
+              <option value="true">사용</option>
+              <option value="false">중지</option>
+            </select>
+          </label>
+          <label class="wide">초기/변경 비밀번호<input id="adminPassword" type="password" placeholder="신규 계정은 필수, 수정은 비우면 유지"></label>
+          <button class="primary" type="button" onclick="saveAdminUser()">저장</button>
+        </div>
+        <table>
+          <thead><tr><th>아이디</th><th>이름</th><th>직급</th><th>이메일</th><th>권한</th><th>상태</th><th>변경강제</th><th>관리</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="8">계정이 없습니다.</td></tr>'}</tbody>
+        </table>`;
+      editingAdminId = '';
+    }
+
+    function clearAdminForm() {
+      editingAdminId = '';
+      document.getElementById('adminId').disabled = false;
+      document.getElementById('adminId').value = '';
+      document.getElementById('adminName').value = '';
+      document.getElementById('adminTitle').value = '';
+      document.getElementById('adminEmail').value = '';
+      document.getElementById('adminRole').value = 'operator';
+      document.getElementById('adminActive').value = 'true';
+      document.getElementById('adminPassword').value = '';
+    }
+
+    function editAdminUser(user) {
+      editingAdminId = user.id;
+      document.getElementById('adminId').disabled = true;
+      document.getElementById('adminId').value = user.id;
+      document.getElementById('adminName').value = user.name || '';
+      document.getElementById('adminTitle').value = user.title || '';
+      document.getElementById('adminEmail').value = user.email || '';
+      document.getElementById('adminRole').value = user.role || 'operator';
+      document.getElementById('adminActive').value = user.active ? 'true' : 'false';
+      document.getElementById('adminPassword').value = '';
+    }
+
+    async function saveAdminUser() {
+      const id = document.getElementById('adminId').value.trim();
+      const body = {
+        id,
+        name: document.getElementById('adminName').value.trim(),
+        title: document.getElementById('adminTitle').value.trim(),
+        email: document.getElementById('adminEmail').value.trim(),
+        role: document.getElementById('adminRole').value,
+        active: document.getElementById('adminActive').value === 'true',
+        password: document.getElementById('adminPassword').value
+      };
+
+      if (!id) return alert('아이디를 입력하세요.');
+      if (!editingAdminId && !body.password) return alert('신규 계정은 초기 비밀번호가 필요합니다.');
+
+      const url = editingAdminId ? `${API}/admin-users/${encodeURIComponent(editingAdminId)}` : `${API}/admin-users`;
+      const method = editingAdminId ? 'PUT' : 'POST';
+      const res = await apiFetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) throw new Error('관리자 계정 저장 실패');
+      await loadAdminUsers();
+    }
+
+    async function deleteAdminUser(id) {
+      if (!confirm(`${id} 계정을 삭제할까요?`)) return;
+
+      const res = await apiFetch(`${API}/admin-users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('관리자 계정 삭제 실패');
+      await loadAdminUsers();
+    }
+
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
 
@@ -786,6 +1074,14 @@
     document.getElementById('applyBtn').addEventListener('click', async () => {
       try { await applyPolicy(); }
       catch (error) { setMessage(error.message); alert(error.message); }
+    });
+
+    document.querySelectorAll('[data-super-tab]').forEach(button => {
+      button.addEventListener('click', () => {
+        loadSuperTab(button.dataset.superTab).catch(error => {
+          superContent.innerHTML = `<div class="message">${escapeHtml(error.message)}</div>`;
+        });
+      });
     });
 
     document.getElementById('forgotPasswordBtn').addEventListener('click', async () => {
