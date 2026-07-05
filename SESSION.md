@@ -64,3 +64,23 @@
 - Server `StartSafetyWallpaperServer.bat` prints both the admin page URL and policy URL.
 - The hidden background agent was restarted after the slide cycle update.
 - Local workspace was initialized as a git repository and pushed to `https://github.com/rlckd2201/wallpaper_slide.git` on branch `main`.
+
+## 2026-07-06
+
+### Slide Interval Fix
+- User reported that changing `slideIntervalSeconds` to `3600` did not appear to apply.
+- Runtime log confirmed the employee agent was receiving `interval=3600s, poll=600s`, but the old main loop advanced/applied a slide every policy poll wake.
+- `SafetyWallpaperSlideshow.ps1` now separates policy polling from slide transition timing with `$nextSlideChangeAt`.
+- Policy sync still runs every `policyPollSeconds`, and manual tray refresh still syncs immediately.
+- If the policy hash is unchanged and the next slide time has not arrived, refresh/poll no longer renders or sets a wallpaper.
+- Policy/image-set changes reset the slide timer so new policy changes still apply immediately.
+- Rebuilt `dist/SafetyWallpaperAgent.zip` and reinstalled the current PC to `C:\ProgramData\SafetyWallpaper`.
+- Verified current PC has running hidden PowerShell processes for `SafetyWallpaperSlideshow.ps1` and `SafetyWallpaperTray.ps1` under `C:\ProgramData\SafetyWallpaper`.
+- Verified HKCU startup still points to `wscript.exe //B //Nologo "C:\ProgramData\SafetyWallpaper\RunSafetyWallpaperSlideshowHidden.vbs"`.
+- Manual refresh test after reinstall logged policy sync only and did not log a new `Wallpaper set`, confirming unchanged policy refresh no longer advances the slide.
+
+### Installer BAT Hardening
+- `InstallSafetyWallpaperAgentFromZip.bat` argument parsing was tightened.
+- `.zip` arguments are treated as ZIP paths, non-ZIP path arguments are treated as install directories, and `/no-start` or `--no-start` are treated as options.
+- Verified explicit ZIP install to a temp folder with `/no-start`.
+- Verified NAC-style same-folder ZIP autodetection to a temp folder with `/no-start`.

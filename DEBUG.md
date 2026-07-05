@@ -169,3 +169,42 @@
 - Rechecked parsers and server compile path after queue item tracking: `AGENT_PARSE_OK`, `STATIC_SERVER_PARSE_OK`, `COMPILE_OK_URLACL_REQUIRED`.
 - `git diff --check` passed; only CRLF conversion warnings were reported.
 - `graphify update .` succeeded after queue item tracking: 56 nodes, 99 edges, 12 communities.
+
+## 2026-07-06 - `slideIntervalSeconds=3600` still changing around 10 minutes
+
+### Symptom
+- Admin UI showed `그림 전환 시간(초)=3600`.
+- Employee log showed policy was received as `interval=3600s, poll=600s`.
+- Despite that, wallpaper was rendered/set at policy poll times such as `08:06`, `08:16`, `08:26`, and after manual refresh.
+
+### Root Cause
+- The main loop used policy poll wakeups and slide transition wakeups as one path.
+- `Get-LoopSleepSeconds` correctly woke early for policy polling, but after each wake the active-image branch selected and applied the next slide unconditionally.
+- Result: `policyPollSeconds=600` effectively acted like the slide interval whenever the server policy remained active.
+
+### Fix
+- Added `$nextSlideChangeAt` to `SafetyWallpaperSlideshow.ps1`.
+- The loop now advances/applies a slide only when `(Get-Date) -ge $nextSlideChangeAt`.
+- Policy sync and manual refresh still happen independently.
+- Policy hash changes, black-wallpaper fallback, and image-set/order changes reset `$nextSlideChangeAt` so changed server policy applies immediately.
+- Sleep duration is now based on the earlier of next policy sync and next slide change.
+
+### Verification
+- Rebuilt `dist/SafetyWallpaperAgent.zip`.
+- Reinstalled local agent into `C:\ProgramData\SafetyWallpaper` with `InstallSafetyWallpaperAgentFromZip.bat`.
+- Confirmed installed `SafetyWallpaperSlideshow.ps1` contains `$nextSlideChangeAt` logic.
+- Confirmed current processes:
+  - `powershell.exe ... -File "C:\ProgramData\SafetyWallpaper\SafetyWallpaperSlideshow.ps1"`
+  - `powershell.exe ... -File "C:\ProgramData\SafetyWallpaper\SafetyWallpaperTray.ps1"`
+- Confirmed startup registry:
+  - `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\SafetyWallpaperSlideshow`
+  - `wscript.exe //B //Nologo "C:\ProgramData\SafetyWallpaper\RunSafetyWallpaperSlideshowHidden.vbs"`
+- Forced `C:\ProgramData\SafetyWallpaper\.runtime\refresh.signal` after restart.
+- Log showed manual policy refresh and policy sync only; no new `Rendered taskbar-safe wallpaper` or `Wallpaper set` entry after the refresh.
+- Parser checks passed: `AGENT_PARSE_OK`, `TRAY_PARSE_OK`.
+- `git diff --check` passed with only CRLF conversion warnings.
+
+### Installer Note
+- A local reinstall attempt exposed ambiguous installer argument behavior.
+- `InstallSafetyWallpaperAgentFromZip.bat` now parses `.zip` as ZIP path, other path as install dir, and `/no-start`/`--no-start` as options.
+- Verified explicit ZIP-path extraction and NAC same-folder ZIP auto-detection into temp folders.

@@ -862,6 +862,7 @@ $slideOrderKey = ''
 $policyState = $null
 $policyHash = ''
 $nextPolicySyncAt = [DateTime]::MinValue
+$nextSlideChangeAt = [DateTime]::MinValue
 
 try {
     $hasLock = $mutex.WaitOne(0, $false)
@@ -902,6 +903,7 @@ try {
                     $slideOrder = @()
                     $slideOrderKey = ''
                     $lastWallpaperKey = ''
+                    $nextSlideChangeAt = [DateTime]::MinValue
                     $policyHash = $newPolicyState.PolicyHash
                     Write-Log 'Policy changed; slide index reset.'
                 }
@@ -923,6 +925,7 @@ try {
                 if ($lastWallpaperKey -ne $BlackWallpaperPath) {
                     Set-DesktopWallpaper -Path $BlackWallpaperPath -Style $style -DryRunMode:$DryRun
                     $lastWallpaperKey = $BlackWallpaperPath
+                    $nextSlideChangeAt = [DateTime]::MinValue
                     Write-Log "Campaign state is '$campaignState'. Black wallpaper applied."
                 }
 
@@ -932,6 +935,7 @@ try {
                 if ($lastWallpaperKey -ne $BlackWallpaperPath) {
                     Set-DesktopWallpaper -Path $BlackWallpaperPath -Style $style -DryRunMode:$DryRun
                     $lastWallpaperKey = $BlackWallpaperPath
+                    $nextSlideChangeAt = [DateTime]::MinValue
                     Write-Log 'Active policy has no cached images. Black wallpaper applied.' 'WARN'
                 }
 
@@ -949,39 +953,45 @@ try {
 
                     $slideIndex = 0
                     $slideOrderKey = $imageSetKey
+                    $nextSlideChangeAt = [DateTime]::MinValue
                 }
 
-                if ($slideIndex -ge $slideOrder.Count) {
-                    $slideIndex = 0
+                if ((Get-Date) -ge $nextSlideChangeAt) {
+                    if ($slideIndex -ge $slideOrder.Count) {
+                        $slideIndex = 0
 
-                    if ([bool]$policy.shuffle -and $slideOrder.Count -gt 1) {
-                        $slideOrder = @($slideOrder | Sort-Object { Get-Random })
-                        Write-Log 'Slide cycle completed; shuffled order reset.'
+                        if ([bool]$policy.shuffle -and $slideOrder.Count -gt 1) {
+                            $slideOrder = @($slideOrder | Sort-Object { Get-Random })
+                            Write-Log 'Slide cycle completed; shuffled order reset.'
+                        }
+                        else {
+                            Write-Log 'Slide cycle completed; restarting from first image.'
+                        }
                     }
-                    else {
-                        Write-Log 'Slide cycle completed; restarting from first image.'
+
+                    $selectedImage = $images[[int]$slideOrder[$slideIndex]]
+                    $slideIndex++
+
+                    $selectedImageKey = '{0}|{1}|{2}|{3}|{4}' -f $policyHash, $selectedImage.FullName, $selectedImage.LastWriteTimeUtc.Ticks, $selectedImage.Length, $policy.safeAreaPaddingPixels
+
+                    if ($lastWallpaperKey -ne $selectedImageKey) {
+                        $wallpaperPath = $selectedImage.FullName
+                        $applyStyle = $style
+
+                        if ([bool]$policy.avoidTaskbar) {
+                            $wallpaperPath = ConvertTo-TaskbarSafeWallpaper -SourcePath $selectedImage.FullName -PaddingPixels ([int]$policy.safeAreaPaddingPixels)
+                            $applyStyle = 'Stretch'
+                        }
+
+                        Set-DesktopWallpaper -Path $wallpaperPath -Style $applyStyle -DryRunMode:$DryRun
+                        $lastWallpaperKey = $selectedImageKey
                     }
+
+                    $nextSlideChangeAt = (Get-Date).AddSeconds([int]$policy.slideIntervalSeconds)
                 }
 
-                $selectedImage = $images[[int]$slideOrder[$slideIndex]]
-                $slideIndex++
-
-                $selectedImageKey = '{0}|{1}|{2}|{3}|{4}' -f $policyHash, $selectedImage.FullName, $selectedImage.LastWriteTimeUtc.Ticks, $selectedImage.Length, $policy.safeAreaPaddingPixels
-
-                if ($lastWallpaperKey -ne $selectedImageKey) {
-                    $wallpaperPath = $selectedImage.FullName
-                    $applyStyle = $style
-
-                    if ([bool]$policy.avoidTaskbar) {
-                        $wallpaperPath = ConvertTo-TaskbarSafeWallpaper -SourcePath $selectedImage.FullName -PaddingPixels ([int]$policy.safeAreaPaddingPixels)
-                        $applyStyle = 'Stretch'
-                    }
-
-                    Set-DesktopWallpaper -Path $wallpaperPath -Style $applyStyle -DryRunMode:$DryRun
-                    $lastWallpaperKey = $selectedImageKey
-                }
-
-                $sleepSeconds = Get-LoopSleepSeconds -DesiredSeconds ([int]$policy.slideIntervalSeconds) -NextPolicySyncAt $nextPolicySyncAt
+                $secondsUntilSlideChange = [Math]::Max(1, [int][Math]::Ceiling(($nextSlideChangeAt - (Get-Date)).TotalSeconds))
+                $sleepSeconds = Get-LoopSleepSeconds -DesiredSeconds $secondsUntilSlideChange -NextPolicySyncAt $nextPolicySyncAt
             }
         }
         catch {

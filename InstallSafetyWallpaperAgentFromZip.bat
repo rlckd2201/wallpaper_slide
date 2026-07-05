@@ -4,17 +4,22 @@ setlocal EnableExtensions DisableDelayedExpansion
 set "SCRIPT_DIR=%~dp0"
 set "ZIP_PATH="
 set "INSTALL_DIR=%ProgramData%\SafetyWallpaper"
+set "INSTALL_DIR_SET="
 set "NO_START="
 
 if /I "%~1"=="/?" goto usage
 if /I "%~1"=="-h" goto usage
+if /I "%~1"=="--help" goto usage
 
-for %%A in (%*) do (
-    if /I "%%~A"=="/no-start" set "NO_START=1"
-)
-
-if not "%~1"=="" if /I not "%~1"=="/no-start" set "ZIP_PATH=%~1"
-if not "%~2"=="" if /I not "%~2"=="/no-start" set "INSTALL_DIR=%~2"
+call :parse_arg "%~1"
+call :parse_arg "%~2"
+call :parse_arg "%~3"
+call :parse_arg "%~4"
+call :parse_arg "%~5"
+call :parse_arg "%~6"
+call :parse_arg "%~7"
+call :parse_arg "%~8"
+call :parse_arg "%~9"
 
 if not defined ZIP_PATH if exist "%SCRIPT_DIR%SafetyWallpaperAgent.zip" set "ZIP_PATH=%SCRIPT_DIR%SafetyWallpaperAgent.zip"
 
@@ -87,6 +92,27 @@ exit /b %START_EXIT%
 
 :usage
 echo Usage: InstallSafetyWallpaperAgentFromZip.bat [zip_path] [install_dir] [/no-start]
+echo        If zip_path is omitted, the newest ZIP beside this BAT is used.
+exit /b 0
+
+:parse_arg
+if "%~1"=="" exit /b 0
+if /I "%~1"=="/no-start" (
+    set "NO_START=1"
+    exit /b 0
+)
+if /I "%~1"=="--no-start" (
+    set "NO_START=1"
+    exit /b 0
+)
+if /I "%~x1"==".zip" (
+    if not defined ZIP_PATH set "ZIP_PATH=%~1"
+    exit /b 0
+)
+if not defined INSTALL_DIR_SET (
+    set "INSTALL_DIR=%~1"
+    set "INSTALL_DIR_SET=1"
+)
 exit /b 0
 
 :log

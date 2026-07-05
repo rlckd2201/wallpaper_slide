@@ -32,6 +32,7 @@
 - Add installer/update strategy and uninstall behavior.
 - [x] Fix NAC deployment packaging with ZIP plus bootstrap BAT extraction/install flow.
 - Add tests or manual verification checklist for image change, date expiry, startup, and black background fallback.
+- [x] Fix employee agent so `policyPollSeconds` does not override `slideIntervalSeconds`.
 
 ## Open Questions
 - Confirm administrator web page workflow on `172.16.19.35:28080/safety-wallpaper/admin` after pulling the latest server files.

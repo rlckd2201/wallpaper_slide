@@ -36,6 +36,9 @@
 - Add `X-Safety-Wallpaper-Agent`, `X-Safety-Wallpaper-Computer`, and `X-Safety-Wallpaper-User` to employee agent HTTP requests to distinguish and identify agent traffic.
 - Uploaded image requests return the saved `images/...` URL so the web page can select the actual stored file.
 - Store admin passwords as PBKDF2 hashes only; do not store the initial password as plaintext in the repo.
+- Policy polling and slide transitions are separate clocks. `policyPollSeconds` only checks for changed policy, while `slideIntervalSeconds` controls when the next unchanged-policy slide is applied.
+- Manual tray refresh should fetch policy immediately, but it should not advance the slide when the policy/image set is unchanged and the configured slide interval has not elapsed.
+- NAC bootstrap BAT should support both explicit ZIP path installs and same-folder ZIP auto-detection.
 
 ## Pending
 - Whether production startup registration should use HKCU Run, HKLM Run, or Task Scheduler under NAC.
