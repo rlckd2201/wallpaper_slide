@@ -3,6 +3,7 @@ setlocal EnableExtensions DisableDelayedExpansion
 
 set "SCRIPT_DIR=%~dp0"
 set "ZIP_PATH="
+set "SOURCE_DIR="
 set "INSTALL_DIR=%ProgramData%\SafetyWallpaper"
 set "INSTALL_DIR_SET="
 set "NO_START="
@@ -28,14 +29,23 @@ if not defined ZIP_PATH (
     for /f "usebackq delims=" %%Z in (`powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$zip = Get-ChildItem -LiteralPath $env:SW_SCRIPT_DIR -Filter '*.zip' -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName; if ($zip) { $zip }"`) do set "ZIP_PATH=%%Z"
 )
 
-if not defined ZIP_PATH (
-    echo ZIP file not found.
-    exit /b 10
-)
-
-if not exist "%ZIP_PATH%" (
+if defined ZIP_PATH if not exist "%ZIP_PATH%" (
     echo ZIP file not found: %ZIP_PATH%
     exit /b 11
+)
+
+if not defined ZIP_PATH (
+    set "SOURCE_DIR=%SCRIPT_DIR%"
+
+    if not exist "%SOURCE_DIR%StartSafetyWallpaperSlideshow.bat" (
+        echo ZIP file not found and extracted agent files are missing.
+        exit /b 10
+    )
+
+    if not exist "%SOURCE_DIR%SafetyWallpaperSlideshow_v2.ps1" (
+        echo Extracted V2 agent script not found.
+        exit /b 10
+    )
 )
 
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%" >nul 2>nul
@@ -46,7 +56,11 @@ if errorlevel 1 (
 
 set "LOG_FILE=%INSTALL_DIR%\install.log"
 call :log "Install started."
-call :log "ZIP=%ZIP_PATH%"
+if defined ZIP_PATH (
+    call :log "ZIP=%ZIP_PATH%"
+) else (
+    call :log "SOURCE_DIR=%SOURCE_DIR%"
+)
 call :log "INSTALL_DIR=%INSTALL_DIR%"
 
 if exist "%INSTALL_DIR%\.runtime" (
@@ -55,12 +69,17 @@ if exist "%INSTALL_DIR%\.runtime" (
     timeout /t 2 /nobreak >nul 2>nul
 )
 
-set "SW_ZIP=%ZIP_PATH%"
 set "SW_INSTALL_DIR=%INSTALL_DIR%"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $zip=$env:SW_ZIP; $dest=$env:SW_INSTALL_DIR; New-Item -ItemType Directory -Force -Path $dest | Out-Null; Expand-Archive -LiteralPath $zip -DestinationPath $dest -Force"
+if defined ZIP_PATH (
+    set "SW_ZIP=%ZIP_PATH%"
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $zip=$env:SW_ZIP; $dest=$env:SW_INSTALL_DIR; New-Item -ItemType Directory -Force -Path $dest | Out-Null; Expand-Archive -LiteralPath $zip -DestinationPath $dest -Force"
+) else (
+    set "SW_SOURCE_DIR=%SOURCE_DIR%"
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $source=$env:SW_SOURCE_DIR; $dest=$env:SW_INSTALL_DIR; $files=@('InstallSafetyWallpaperAgentFromZip.bat','StartSafetyWallpaperSlideshow.bat','RunSafetyWallpaperSlideshowHidden.vbs','SafetyWallpaperSlideshow_v2.ps1','SafetyWallpaperTray.ps1','StopSafetyWallpaperSlideshow.bat','UnregisterSafetyWallpaperStartup.bat','config.json'); New-Item -ItemType Directory -Force -Path $dest | Out-Null; foreach($name in $files){ Copy-Item -LiteralPath (Join-Path $source $name) -Destination (Join-Path $dest $name) -Force }"
+)
 if errorlevel 1 (
-    call :log "ZIP extract failed."
-    echo ZIP extract failed.
+    call :log "Agent file install failed."
+    echo Agent file install failed.
     exit /b 20
 )
 
