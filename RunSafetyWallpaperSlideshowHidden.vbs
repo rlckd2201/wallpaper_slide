@@ -12,7 +12,7 @@ Set shell = CreateObject("WScript.Shell")
 Set fileSystem = CreateObject("Scripting.FileSystemObject")
 
 root = fileSystem.GetParentFolderName(WScript.ScriptFullName)
-scriptPath = fileSystem.BuildPath(root, "SafetyWallpaperSlideshow.ps1")
+scriptPath = fileSystem.BuildPath(root, "SafetyWallpaperSlideshow_v2.ps1")
 trayPath = fileSystem.BuildPath(root, "SafetyWallpaperTray.ps1")
 command = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File " & Chr(34) & scriptPath & Chr(34)
 trayCommand = "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File " & Chr(34) & trayPath & Chr(34)
