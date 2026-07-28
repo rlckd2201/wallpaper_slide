@@ -75,7 +75,7 @@ if defined ZIP_PATH (
     powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $zip=$env:SW_ZIP; $dest=$env:SW_INSTALL_DIR; New-Item -ItemType Directory -Force -Path $dest | Out-Null; Expand-Archive -LiteralPath $zip -DestinationPath $dest -Force"
 ) else (
     set "SW_SOURCE_DIR=%SOURCE_DIR%"
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $source=$env:SW_SOURCE_DIR; $dest=$env:SW_INSTALL_DIR; $files=@('InstallSafetyWallpaperAgentFromZip.bat','StartSafetyWallpaperSlideshow.bat','RunSafetyWallpaperSlideshowHidden.vbs','SafetyWallpaperSlideshow_v2.ps1','SafetyWallpaperTray.ps1','StopSafetyWallpaperSlideshow.bat','UnregisterSafetyWallpaperStartup.bat','config.json'); New-Item -ItemType Directory -Force -Path $dest | Out-Null; foreach($name in $files){ Copy-Item -LiteralPath (Join-Path $source $name) -Destination (Join-Path $dest $name) -Force }"
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $source=$env:SW_SOURCE_DIR; $dest=$env:SW_INSTALL_DIR; $files=@('InstallSafetyWallpaperAgentFromZip.bat','StartSafetyWallpaperSlideshow.bat','SafetyWallpaperSlideshowStartup.vbs','RunSafetyWallpaperSlideshowHidden.vbs','SafetyWallpaperSlideshow_v2.ps1','SafetyWallpaperTray.ps1','StopSafetyWallpaperSlideshow.bat','UnregisterSafetyWallpaperStartup.bat','config.json'); New-Item -ItemType Directory -Force -Path $dest | Out-Null; foreach($name in $files){ Copy-Item -LiteralPath (Join-Path $source $name) -Destination (Join-Path $dest $name) -Force }"
 )
 if errorlevel 1 (
     call :log "Agent file install failed."

@@ -3,6 +3,9 @@ setlocal EnableExtensions DisableDelayedExpansion
 
 set "AGENT_ZIP=C:\Program Files\Geni\Genian\Patch\2BC78C2AD6C147057FC9CBDE61757BBAD64C306E.zip"
 set "INSTALL_DIR=%ProgramData%\SafetyWallpaper"
+set "STARTUP_SOURCE=%~dp0SafetyWallpaperSlideshowStartup.vbs"
+set "COMMON_STARTUP=%ProgramData%\Microsoft\Windows\Start Menu\Programs\Startup"
+set "COMMON_STARTUP_FILE=%COMMON_STARTUP%\SafetyWallpaperSlideshowStartup.vbs"
 set "NO_START="
 
 if /I "%~1"=="/no-start" set "NO_START=1"
@@ -38,6 +41,12 @@ if errorlevel 1 (
 )
 
 icacls "%INSTALL_DIR%" /grant *S-1-5-32-545:(OI)(CI)M /T >nul 2>nul
+
+if exist "%STARTUP_SOURCE%" (
+    copy /y "%STARTUP_SOURCE%" "%INSTALL_DIR%\SafetyWallpaperSlideshowStartup.vbs" >nul 2>nul
+    if not exist "%COMMON_STARTUP%" mkdir "%COMMON_STARTUP%" >nul 2>nul
+    copy /y "%STARTUP_SOURCE%" "%COMMON_STARTUP_FILE%" >nul 2>nul
+)
 
 set "START_BAT=%INSTALL_DIR%\StartSafetyWallpaperSlideshow.bat"
 if not exist "%START_BAT%" (

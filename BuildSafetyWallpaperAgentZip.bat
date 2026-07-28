@@ -9,7 +9,7 @@ set "SW_ZIP=%ZIP_PATH%"
 
 if not exist "%DIST%" mkdir "%DIST%" >nul 2>nul
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $root=$env:SW_ROOT; $zip=$env:SW_ZIP; $files=@('InstallSafetyWallpaperAgentFromZip.bat','StartSafetyWallpaperSlideshow.bat','RunSafetyWallpaperSlideshowHidden.vbs','SafetyWallpaperSlideshow_v2.ps1','SafetyWallpaperTray.ps1','StopSafetyWallpaperSlideshow.bat','UnregisterSafetyWallpaperStartup.bat','config.json'); $paths=$files | ForEach-Object { Join-Path $root $_ }; foreach($path in $paths){ if(-not (Test-Path -LiteralPath $path -PathType Leaf)){ throw \"Missing package file: $path\" } }; if(Test-Path -LiteralPath $zip){ Remove-Item -LiteralPath $zip -Force }; Compress-Archive -LiteralPath $paths -DestinationPath $zip -CompressionLevel Optimal"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $root=$env:SW_ROOT; $zip=$env:SW_ZIP; $files=@('InstallSafetyWallpaperAgentFromZip.bat','StartSafetyWallpaperSlideshow.bat','SafetyWallpaperSlideshowStartup.vbs','RunSafetyWallpaperSlideshowHidden.vbs','SafetyWallpaperSlideshow_v2.ps1','SafetyWallpaperTray.ps1','StopSafetyWallpaperSlideshow.bat','UnregisterSafetyWallpaperStartup.bat','config.json'); $paths=$files | ForEach-Object { Join-Path $root $_ }; foreach($path in $paths){ if(-not (Test-Path -LiteralPath $path -PathType Leaf)){ throw \"Missing package file: $path\" } }; if(Test-Path -LiteralPath $zip){ Remove-Item -LiteralPath $zip -Force }; Compress-Archive -LiteralPath $paths -DestinationPath $zip -CompressionLevel Optimal"
 
 if errorlevel 1 (
     echo ZIP build failed.
